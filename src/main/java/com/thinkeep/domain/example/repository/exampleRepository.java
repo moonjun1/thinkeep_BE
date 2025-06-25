@@ -1,4 +1,4 @@
-package domain.example.repository;
+package com.thinkeep.domain.example.repository;
 
 public interface exampleRepository {
 }

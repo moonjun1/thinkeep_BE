@@ -1,4 +1,4 @@
-package domain.example.dto;
+package com.thinkeep.domain.example.dto;
 
 public class exampleDto {
 }

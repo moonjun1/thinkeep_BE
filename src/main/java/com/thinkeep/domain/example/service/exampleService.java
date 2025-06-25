@@ -1,4 +1,4 @@
-package domain.example.service;
+package com.thinkeep.domain.example.service;
 
 public class exampleService {
 }

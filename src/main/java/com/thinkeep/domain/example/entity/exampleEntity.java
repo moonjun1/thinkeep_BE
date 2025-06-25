@@ -1,4 +1,4 @@
-package domain.example.entity;
+package com.thinkeep.domain.example.entity;
 
 public class exampleEntity {
 }
