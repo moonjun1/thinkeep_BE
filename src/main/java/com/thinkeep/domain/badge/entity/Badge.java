@@ -1,4 +1,4 @@
-package com.thinkeep.domain.badge;
+package com.thinkeep.domain.badge.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -24,5 +24,11 @@ public class Badge {
 
     @Column(name = "condition_json", nullable = false, columnDefinition = "TEXT")
     private String conditionJson;
+
+    public void update(String name, String description, String conditionJson) {
+        this.name = name;
+        this.description = description;
+        this.conditionJson = conditionJson;
+    }
 
 }

@@ -1,4 +1,4 @@
-package com.thinkeep.domain.badge;
+package com.thinkeep.domain.badge.entity;
 
 
 import com.thinkeep.domain.user.entity.User;
