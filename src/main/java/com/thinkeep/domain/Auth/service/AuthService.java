@@ -4,6 +4,7 @@ import com.thinkeep.domain.Auth.dto.LoginRequest;
 import com.thinkeep.domain.Auth.dto.LoginResponse;
 import com.thinkeep.domain.user.entity.User;
 import com.thinkeep.domain.user.repository.UserRepository;
+import com.thinkeep.global.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,11 @@ import java.util.Optional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-
 @Transactional(readOnly = true)
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final JwtUtil jwtUtil;
 
     /**
      * 일반 로그인 (닉네임 + 비밀번호)
@@ -57,7 +58,10 @@ public class AuthService {
                     .build();
         }
 
-        // 4. 로그인 성공
+        // 4. JWT 토큰 생성
+        String accessToken = jwtUtil.generateToken(user);
+
+        // 5. 로그인 성공
         log.info("일반 로그인 성공: userNo={}, nickname={}", user.getUserNo(), user.getNickname());
         return LoginResponse.builder()
                 .success(true)
@@ -65,6 +69,8 @@ public class AuthService {
                 .userNo(user.getUserNo())
                 .nickname(user.getNickname())
                 .isKakaoUser(false)
+                .accessToken(accessToken)    // JWT 토큰 추가!
+                .expiresIn(3600L)           // 1시간 (초 단위)
                 .build();
     }
 
@@ -87,7 +93,10 @@ public class AuthService {
 
         User user = userOptional.get();
 
-        // 2. 로그인 성공
+        // 2. JWT 토큰 생성
+        String accessToken = jwtUtil.generateToken(user);
+
+        // 3. 로그인 성공
         log.info("카카오 로그인 성공: userNo={}, nickname={}", user.getUserNo(), user.getNickname());
         return LoginResponse.builder()
                 .success(true)
@@ -95,6 +104,8 @@ public class AuthService {
                 .userNo(user.getUserNo())
                 .nickname(user.getNickname())
                 .isKakaoUser(true)
+                .accessToken(accessToken)    // JWT 토큰 추가!
+                .expiresIn(3600L)           // 1시간 (초 단위)
                 .build();
     }
 }

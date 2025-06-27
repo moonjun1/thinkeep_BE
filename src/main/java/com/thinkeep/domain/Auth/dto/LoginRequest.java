@@ -11,4 +11,6 @@ public class LoginRequest {
 
     private String nickname;
     private String password;
+    private String accessToken;    // JWT 토큰
+    private Long expiresIn;        // 만료 시간 (초)
 }
