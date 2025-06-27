@@ -1,6 +1,7 @@
 package com.thinkeep.badge.domain;
 
-import com.thinkeep.user.domain.User;
+
+import com.thinkeep.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 

@@ -10,6 +10,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter @Setter
+@Table(name = "users")
 public class UserBadgeId implements Serializable {
     @Column(name = "user_no")
     private Long userNo;
