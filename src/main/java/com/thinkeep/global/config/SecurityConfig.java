@@ -44,8 +44,6 @@ public class SecurityConfig {
                         // 인증 불필요한 경로
                         .requestMatchers("/api/auth/**").permitAll()          // 로그인, 카카오 로그인
                         .requestMatchers("POST", "/api/users").permitAll()    // 회원가입
-                        .requestMatchers("/h2-console/**").permitAll()        // H2 콘솔 (개발용)
-
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
