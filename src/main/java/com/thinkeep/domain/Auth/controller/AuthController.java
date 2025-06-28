@@ -5,18 +5,12 @@ import com.thinkeep.domain.Auth.dto.LoginRequest;
 import com.thinkeep.domain.Auth.dto.LoginResponse;
 import com.thinkeep.domain.Auth.dto.UserInfo;
 import com.thinkeep.domain.Auth.service.AuthService;
-import com.thinkeep.domain.user.entity.User;
 import com.thinkeep.domain.user.repository.UserRepository;
-import com.thinkeep.global.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.OAuth2ResourceServerProperties;
 import org.springframework.http.ResponseEntity;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
-
-import java.util.Optional;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -83,7 +77,7 @@ public class AuthController {
      * 카카오 로그인
      * POST /api/auth/kakao-login
      */
-    @PostMapping("/kakao-login")  // ← 이 어노테이션이 빠져있었음!
+    @PostMapping("/kakao-login")
     public ResponseEntity<LoginResponse> kakaoLogin(@RequestBody KakaoLoginRequest request) {
         log.info("POST /api/auth/kakao-login - 카카오 로그인 요청: kakaoId={}, nickname={}",
                 request.getKakaoId(), request.getNickname());

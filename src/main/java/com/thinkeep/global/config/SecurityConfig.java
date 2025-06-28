@@ -1,6 +1,7 @@
 package com.thinkeep.global.config;
 
 import com.thinkeep.global.jwt.JwtAuthenticationFilter;
+import com.thinkeep.global.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -20,43 +21,41 @@ import java.util.Arrays;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtUtil jwtUtil;
+
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(jwtUtil);
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
+        return http
                 // CSRF 비활성화 (JWT 사용하므로 불필요)
-                .csrf().disable()
+                .csrf(csrf -> csrf.disable())
 
                 // CORS 설정 적용
-                .cors().configurationSource(corsConfigurationSource())
-
-                .and()
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
                 // 세션 사용하지 않음 (JWT 사용)
-                .sessionManagement()
-                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-
-                .and()
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
 
                 // 경로별 권한 설정
                 .authorizeHttpRequests(auth -> auth
                         // 인증 불필요한 경로
                         .requestMatchers("/api/auth/**").permitAll()          // 로그인, 카카오 로그인
                         .requestMatchers("POST", "/api/users").permitAll()    // 회원가입
+
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
 
-                // H2 콘솔을 위한 설정 (개발환경에서만)
-                .headers().frameOptions().disable()
-
-                .and()
-
                 // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
 
-        return http.build();
+                .build();
     }
 
     /**
@@ -78,7 +77,6 @@ public class SecurityConfig {
         // 인증 정보 포함 허용
         configuration.setAllowCredentials(true);
 
-        // ← 이 부분만 수정!
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
 

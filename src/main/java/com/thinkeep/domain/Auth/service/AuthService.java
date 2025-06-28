@@ -78,7 +78,7 @@ public class AuthService {
     /**
      * 카카오 로그인 (자동 회원가입 포함)
      */
-    @Transactional  // 자동 회원가입때문에 쓰기 작업 필요
+    @Transactional
     public LoginResponse kakaoLogin(String kakaoId, String nickname, String profileImage) {
         log.info("카카오 로그인 시도: kakaoId={}, nickname={}", kakaoId, nickname);
 
