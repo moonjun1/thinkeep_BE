@@ -3,6 +3,8 @@ package com.thinkeep.global.config;
 import com.thinkeep.global.jwt.JwtAuthenticationFilter;
 import com.thinkeep.global.jwt.JwtUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -19,9 +21,14 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
+@Slf4j
 public class SecurityConfig {
 
     private final JwtUtil jwtUtil;
+
+    //  JWT 토글 설정
+    @Value("${app.security.jwt-enabled:true}")
+    private boolean jwtEnabled;
 
     @Bean
     public JwtAuthenticationFilter jwtAuthenticationFilter() {
@@ -30,32 +37,39 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        return http
-                // CSRF 비활성화 (JWT 사용하므로 불필요)
+
+        // 🎯 현재 JWT 상태 로그 출력
+        if (jwtEnabled) {
+            log.info(" JWT 인증 활성화됨");
+        } else {
+            log.warn(" JWT 인증 비활성화됨 - 개발용입니다!");
+        }
+
+        // 기본 설정
+        HttpSecurity httpSecurity = http
                 .csrf(csrf -> csrf.disable())
-
-                // CORS 설정 적용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                // 세션 사용하지 않음 (JWT 사용)
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                );
 
-                // 경로별 권한 설정
-                .authorizeHttpRequests(auth -> auth
-                        // 인증 불필요한 경로
-                        .requestMatchers("/api/auth/**").permitAll()          // 로그인, 카카오 로그인
-                        .requestMatchers("POST", "/api/users").permitAll()    // 회원가입
+        // JWT 토글에 따른 권한 설정
+        if (jwtEnabled) {
+            // 🔒 JWT 인증 모드
+            httpSecurity.authorizeHttpRequests(auth -> auth
+                            .requestMatchers("/api/auth/**").permitAll()          // 로그인, 카카오 로그인
+                            .requestMatchers("POST", "/api/users").permitAll()    // 회원가입
+                            .anyRequest().authenticated()                         // 그 외 모든 요청은 인증 필요
+                    )
+                    .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class);
+        } else {
+            // 개발 모드 - 모든 요청 허용
+            httpSecurity.authorizeHttpRequests(auth -> auth
+                    .anyRequest().permitAll()
+            );
+        }
 
-                        // 그 외 모든 요청은 인증 필요
-                        .anyRequest().authenticated()
-                )
-
-                // JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
-                .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-
-                .build();
+        return httpSecurity.build();
     }
 
     /**
