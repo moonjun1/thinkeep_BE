@@ -12,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -59,6 +61,25 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserInfo> getCurrentUser(Authentication authentication) {
         log.info("GET /api/auth/me - 현재 사용자 정보 조회");
+
+        if (authentication == null) {
+            log.warn("JWT 비활성화 상태 - 개발용 더미 사용자 정보 반환");
+
+            // 개발용 더미 응답
+            UserInfo dummyUser = UserInfo.builder()
+                    .userNo(999L)
+                    .nickname("개발용_더미사용자")
+                    .profileImage(null)
+                    .gender(null)
+                    .birthDate(null)
+                    .streakCount(0)
+                    .isKakaoUser(false)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            return ResponseEntity.ok(dummyUser);
+        }
+
 
         try {
             // Spring Security에서 현재 로그인된 사용자 번호 가져오기
