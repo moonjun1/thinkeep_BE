@@ -73,21 +73,25 @@ public class RecordService {
      * 일기 작성 요청 검증
      */
     private void validateCreateRequest(Long userNo, RecordCreateRequest request) {
+        log.debug("검증 시작: userNo={}", userNo);
+
         if (userNo == null || userNo <= 0) {
+            log.error("검증 실패: 잘못된 사용자 번호 - userNo={}", userNo);
             throw new IllegalArgumentException("유효하지 않은 사용자 번호입니다");
         }
 
         if (request == null) {
+            log.error("검증 실패: 요청 객체가 null");
             throw new IllegalArgumentException("일기 내용이 필요합니다");
         }
 
-        if (!request.isValid()) {
-            throw new IllegalArgumentException("필수 질문들(Q1~Q4)의 답변이 필요합니다");
+        if (!request.hasAllRequiredAnswers()) {
+            log.error("검증 실패: 답변 불완전 - userNo={}, answers={}",
+                    userNo, request.getAnswers() != null ? request.getAnswers().keySet() : "null");
+            throw new IllegalArgumentException("모든 질문(Q1~Q4)에 답변을 작성해주세요");
         }
 
-        if (!request.hasAllRequiredAnswers()) {
-            throw new IllegalArgumentException("모든 질문에 답변을 작성해주세요");
-        }
+        log.debug("검증 완료: userNo={}, 답변 개수={}", userNo, request.getAnswers().size());
     }
 
     /**
