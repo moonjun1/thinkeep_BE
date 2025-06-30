@@ -23,6 +23,10 @@ public class Quiz {
     @JoinColumn(name = "record_id")
     private Record record;
 
+    @Column(name = "user_no", nullable = false)
+    private Long userNo;
+
+    // 사용자 객체 - 연관관계 탐색 시 필요할 수 있어 삽입해둠
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_no", insertable = false, updatable = false)
     private User user;
