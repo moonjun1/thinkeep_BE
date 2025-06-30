@@ -51,9 +51,9 @@ public class QuizService {
             Quiz quiz = Quiz.builder()
                     .userNo(userNo)
                     .context("기록 기반 회상 퀴즈")
-                    .question(seed.getQuestion())
-                    .answer(seed.getAnswer().trim())
-                    .choices(String.join("||", response.getChoices()))  // 오답은 보기용
+                    .question(response.getQuestion())
+                    .answer(response.getAnswer())
+                    .choices(String.join("||", response.getChoices()))
                     .submittedAt(null)
                     .isCorrect(null)
                     .build();
@@ -61,6 +61,7 @@ public class QuizService {
             quizRepository.save(quiz);
             quizResponses.add(response);
         }
+
 
         return quizResponses;
     }
@@ -170,13 +171,15 @@ public class QuizService {
             Map<String, String> answers = record.getAnswersAsMap();
 
             if (answers.containsKey("Q2")) {
-                seeds.add(new QuestionSeed("누구와 시간을 보냈나요?", answers.get("Q2")));
+                seeds.add(new QuestionSeed("Q2", "누구와 시간을 보냈나요?", answers.get("Q2"), record.getDate()));
             }
             if (answers.containsKey("Q3")) {
-                seeds.add(new QuestionSeed("무엇을 먹었나요?", answers.get("Q3")));
+                seeds.add(new QuestionSeed("Q3", "무엇을 먹었나요?", answers.get("Q3"), record.getDate()));
+
             }
             if (answers.containsKey("Q4")) {
-                seeds.add(new QuestionSeed("기억에 남는 일은 무엇인가요?", answers.get("Q4")));
+                seeds.add(new QuestionSeed("Q4", "기억에 남는 일은 무엇인가요?", answers.get("Q4"), record.getDate()));
+
             }
         }
         return seeds;
@@ -186,27 +189,43 @@ public class QuizService {
     // TODO GPT 적용 후 generateGPTQuiz()로 변경
     private QuizResponse generateMockQuiz(QuestionSeed seed) {
         List<String> choices = new ArrayList<>();
-        choices.add(seed.getAnswer());  // 정답
-        choices.add("모르는 보기 1");
-        choices.add("모르는 보기 2");
+        String questionText = null;
 
-        //정답이 가장 먼저 들어가도록 했으므로 선택 보기 섞기
+        switch (seed.getQuestionId()) {
+            case "Q2" -> {
+                questionText = seed.getDate() + "에 누구와 있었는지 기억나시나요?";
+                choices = Arrays.asList(seed.getAnswer(), "선생님", "친구");
+            }
+            case "Q3" -> {
+                questionText = seed.getDate() + "에 먹었던 음식 중 하나는?";
+                choices = Arrays.asList(seed.getAnswer(), "김밥", "어묵");
+            }
+            case "Q4" -> {
+                questionText = seed.getDate() + "에 기억에 남는 일은 무엇인가요?";
+                choices = Arrays.asList(seed.getAnswer(), "독서", "산책");
+            }
+        }
+
         Collections.shuffle(choices);
 
         return QuizResponse.builder()
-                .quizId(null)  // 저장 후 다시 보내줄 수도 있음
+                .quizId(null)
                 .context("기록 기반 회상 퀴즈")
-                .question(seed.getQuestion())
+                .question(questionText)
                 .choices(choices)
+                .answer(seed.getAnswer())  // 실제 정답
                 .build();
     }
+
 
     // 정답 기반 퀴즈 시드 클래스
     @Getter
     @AllArgsConstructor
     private static class QuestionSeed {
         //extractSeedsFromRecords()에서 Q2~Q4 응답을 기반으로 만들어냄
-        private final String question;  //퀴즈에 쓰일 질문 텍스트
-        private final String answer;    //해당 질문에 대한 사용자의 실제 기록
+        private final String questionId; // Q2, Q3, Q4
+        private final String question;   // 예: "누구와 시간을 보냈나요?"
+        private final String answer;     // 사용자 입력값
+        private final LocalDate date;    // 회고 날짜
     }
 }

@@ -13,5 +13,6 @@ public class QuizResponse { //퀴즈 문제를 제공하기 위한 DTO
     private String context;
     private String question;
     private List<String> choices;
+    private String answer;
 }
 
