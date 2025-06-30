@@ -74,31 +74,28 @@ public class QuizService {
 
         String correctAnswer = quiz.getAnswer();
         String submitted = request.getUserAnswer();
+        Boolean skipped = Boolean.TRUE.equals(request.getSkipped());
 
-        // 대소문자, 공백 무시
-        boolean isCorrect = correctAnswer != null && submitted != null &&
-                correctAnswer.trim().equalsIgnoreCase(submitted.trim());
+        if (skipped) {
+            // 건너뛰기 처리
+            quiz.setUserAnswer(null);
+            quiz.setIsCorrect(false);  // 건너뛴 경우 정답 처리 안됨
+            quiz.setSkipped(true);
+        } else {
+            // 일반 제출 처리
+            boolean isCorrect = correctAnswer != null && submitted != null &&
+                    correctAnswer.trim().equalsIgnoreCase(submitted.trim());
 
-        quiz.setUserAnswer(submitted);
-        quiz.setIsCorrect(isCorrect);
+            quiz.setUserAnswer(submitted);
+            quiz.setIsCorrect(isCorrect);
+            quiz.setSkipped(false);
+        }
+
         quiz.setSubmittedAt(LocalDateTime.now());
-
         quizRepository.save(quiz);
-        log.info("퀴즈 응답 저장 완료: quizId={}, 정답여부={}, 제출답='{}'", quiz.getQuizId(), isCorrect, submitted);
-    }
 
-
-    // 오답 퀴즈 재시도 -> 오답 퀴즈 하나씩 보여주기용
-    public QuizResponse getRetryQuiz(Long quizId) {
-        Quiz quiz = quizRepository.findById(quizId)
-                .orElseThrow(() -> new IllegalArgumentException("퀴즈가 존재하지 않습니다"));
-
-        return QuizResponse.builder()
-                .quizId(quiz.getQuizId())
-                .context(quiz.getContext())
-                .question(quiz.getQuestion())
-                .choices(Arrays.asList(quiz.getChoices().split("\\|\\|")))
-                .build();
+        log.info("퀴즈 제출 처리 완료: quizId={}, skipped={}, isCorrect={}, userAnswer='{}'",
+                quiz.getQuizId(), skipped, quiz.getIsCorrect(), quiz.getUserAnswer());
     }
 
     //오늘 푼 퀴즈 중 오답 전체 목록 조회
@@ -106,11 +103,9 @@ public class QuizService {
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
         LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
-        List<Quiz> wrongQuizzes = quizRepository.findByUserNoAndIsCorrectFalseAndSubmittedAtBetween(
-                userNo, todayStart, tomorrowStart
-        );
+        List<Quiz> wrongOrSkipped = quizRepository.findTodayWrongOrSkippedQuizzes(userNo, todayStart, tomorrowStart);
 
-        return wrongQuizzes.stream()
+        return wrongOrSkipped.stream()
                 .map(q -> QuizResponse.builder()
                         .quizId(q.getQuizId())
                         .context(q.getContext())
@@ -118,6 +113,36 @@ public class QuizService {
                         .choices(Arrays.asList(q.getChoices().split("\\|\\|")))
                         .build())
                 .toList();
+    }
+
+    // 오답 퀴즈 재시도 -> 사용자가 오답 퀴즈를 직접 선택해서 다시 풀 수 있음
+//    public QuizResponse getRetryQuiz(Long quizId) {
+//        Quiz quiz = quizRepository.findById(quizId)
+//                .orElseThrow(() -> new IllegalArgumentException("퀴즈가 존재하지 않습니다"));
+//
+//        return QuizResponse.builder()
+//                .quizId(quiz.getQuizId())
+//                .context(quiz.getContext())
+//                .question(quiz.getQuestion())
+//                .choices(Arrays.asList(quiz.getChoices().split("\\|\\|")))
+//                .build();
+//    }
+
+    // 오답 퀴즈 재시도 -> 오답/스킵된 문제의 순차 재시도를 서버가 관리
+    public Optional<QuizResponse> getNextRetryQuiz(Long userNo) {
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime tomorrowStart = todayStart.plusDays(1);
+
+        List<Quiz> wrongOrSkipped = quizRepository.findTodayWrongOrSkippedQuizzes(userNo, todayStart, tomorrowStart);
+
+        return wrongOrSkipped.stream()
+                .findFirst()
+                .map(q -> QuizResponse.builder()
+                        .quizId(q.getQuizId())
+                        .context(q.getContext())
+                        .question(q.getQuestion())
+                        .choices(Arrays.asList(q.getChoices().split("\\|\\|")))
+                        .build());
     }
 
 

@@ -49,18 +49,6 @@ public class QuizController {
     }
 
     /**
-     * 오답 퀴즈 재시도
-     * GET /api/quizzes/{quizId}/retry
-     */
-    @GetMapping("/{quizId}/retry")
-    public ResponseEntity<QuizResponse> retryQuiz(@PathVariable Long quizId) {
-        log.info("GET /api/quizzes/{}/retry - 오답 퀴즈 재시도 요청", quizId);
-
-        QuizResponse retryQuiz = quizService.getRetryQuiz(quizId);
-        return ResponseEntity.ok(retryQuiz);
-    }
-
-    /**
      * 오늘 푼 퀴즈 중 오답 퀴즈만 반환
      * GET /api/quizzes/today/wrong
      */
@@ -74,6 +62,32 @@ public class QuizController {
         return ResponseEntity.ok(wrongQuizzes);
     }
 
+    /**
+     * 재시도할 퀴즈 중 1개 반환 (오답, 건너뛴 퀴즈)
+     * GET /api/quizzes/today/retry-next
+     */
+    @GetMapping("/today/retry-next")
+    public ResponseEntity<QuizResponse> getNextRetryQuiz(
+            Authentication authentication,
+            @RequestParam(required = false) Long userNo
+    ) {
+        Long resolvedUserNo = extractUserNo(authentication, userNo);
+        return quizService.getNextRetryQuiz(resolvedUserNo)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.noContent().build()); // 더 이상 없음
+    }
+
+    /**
+     * 오답 퀴즈 재시도
+     * GET /api/quizzes/{quizId}/retry
+     */
+//    @GetMapping("/{quizId}/retry")
+//    public ResponseEntity<QuizResponse> retryQuiz(@PathVariable Long quizId) {
+//        log.info("GET /api/quizzes/{}/retry - 오답 퀴즈 재시도 요청", quizId);
+//
+//        QuizResponse retryQuiz = quizService.getRetryQuiz(quizId);
+//        return ResponseEntity.ok(retryQuiz);
+//    }
 
     /**
      * 오늘 퀴즈 결과 요약 (총 문항 수, 정답 수)

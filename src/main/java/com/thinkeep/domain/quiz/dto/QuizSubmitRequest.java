@@ -10,5 +10,6 @@ import lombok.*;
 public class QuizSubmitRequest {
     private Long quizId;
     private String userAnswer;
+    private Boolean skipped;
 }
 

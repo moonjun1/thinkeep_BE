@@ -1,6 +1,7 @@
 package com.thinkeep.domain.quiz.entity;
 
 import com.thinkeep.domain.record.entity.Record;
+import com.thinkeep.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,8 +23,10 @@ public class Quiz {
     @JoinColumn(name = "record_id")
     private Record record;
 
-    @Column(nullable = false)
-    private Long userNo;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_no", insertable = false, updatable = false)
+    private User user;
+
 
     private String context;              // 문제 힌트
     private String question;
@@ -34,4 +37,9 @@ public class Quiz {
     private Boolean isCorrect;
 
     private LocalDateTime submittedAt;  // 응답 시간
+
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean skipped = false;    //사용자가 해당 퀴즈를 건너뛰었는지 여부
+
 }

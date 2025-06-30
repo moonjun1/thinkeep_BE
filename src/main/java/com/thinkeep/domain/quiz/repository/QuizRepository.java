@@ -2,6 +2,7 @@ package com.thinkeep.domain.quiz.repository;
 
 import com.thinkeep.domain.quiz.entity.Quiz;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -29,6 +30,10 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
             Long userNo, LocalDateTime start, LocalDateTime end
     );
 
+    @Query("SELECT q FROM Quiz q WHERE q.userNo = :userNo " +
+            "AND q.submittedAt BETWEEN :start AND :end " +
+            "AND (q.isCorrect = false OR q.skipped = true)")
+    List<Quiz> findTodayWrongOrSkippedQuizzes(Long userNo, LocalDateTime start, LocalDateTime end);
 
 
 }
