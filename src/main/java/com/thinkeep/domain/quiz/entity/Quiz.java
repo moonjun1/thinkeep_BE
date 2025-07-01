@@ -46,4 +46,8 @@ public class Quiz {
     @Builder.Default
     private Boolean skipped = false;    //사용자가 해당 퀴즈를 건너뛰었는지 여부
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "question_id", nullable = false, length = 5)
+    private QuestionType questionId;
+
 }

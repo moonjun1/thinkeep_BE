@@ -1,8 +1,10 @@
 package com.thinkeep.domain.quiz.controller;
 
+import com.thinkeep.domain.quiz.dto.QuestionSeed;
 import com.thinkeep.domain.quiz.dto.QuizResponse;
 import com.thinkeep.domain.quiz.dto.QuizResultSummary;
 import com.thinkeep.domain.quiz.dto.QuizSubmitRequest;
+import com.thinkeep.domain.quiz.service.OpenAiQuizService;
 import com.thinkeep.domain.quiz.service.QuizService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -19,6 +22,17 @@ import java.util.List;
 public class QuizController {
 
     private final QuizService quizService;
+    private final OpenAiQuizService openAiQuizService;
+
+    /**
+     * 개발 테스트용 개별 퀴즈 생성 메서드
+     */
+    @PostMapping("/generate")
+    public ResponseEntity<QuizResponse> generateQuiz(@RequestBody QuestionSeed seed) throws IOException {
+        log.info("POST /api/quizzes/generate - GPT 퀴즈 생성 요청: {}", seed);
+        QuizResponse response = openAiQuizService.generateQuizFromSeed(seed);
+        return ResponseEntity.ok(response);
+    }
 
     /**
      * 오늘의 퀴즈 2개 생성

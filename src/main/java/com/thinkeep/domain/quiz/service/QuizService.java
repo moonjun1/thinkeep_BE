@@ -4,6 +4,7 @@ import com.thinkeep.domain.quiz.dto.QuestionSeed;
 import com.thinkeep.domain.quiz.dto.QuizResponse;
 import com.thinkeep.domain.quiz.dto.QuizResultSummary;
 import com.thinkeep.domain.quiz.dto.QuizSubmitRequest;
+import com.thinkeep.domain.quiz.entity.QuestionType;
 import com.thinkeep.domain.quiz.entity.Quiz;
 import com.thinkeep.domain.quiz.repository.QuizRepository;
 import com.thinkeep.domain.record.entity.Record;
@@ -41,11 +42,36 @@ public class QuizService {
         List<QuestionSeed> seeds = extractSeedsFromRecords(recentRecords);
         List<QuizResponse> quizResponses = new ArrayList<>();
 
-        for (QuestionSeed seed : seeds.stream().limit(2).toList()) {
+        int createdCount = 0;
+
+        for (QuestionSeed seed : seeds) {
+            if (createdCount >= 2) break;
+
+            // 1. Record 객체 생성
+            Record record = Record.builder().recordId(seed.getRecordId()).build();
+
+            // 2. 중복 퀴즈 존재 여부 확인
+            boolean alreadyExists = quizRepository
+                    .findByUserNoAndRecordAndQuestionId(
+                            userNo,
+                            record,
+                            QuestionType.valueOf(seed.getQuestionId())
+                    ).isPresent();
+
+            if (alreadyExists) {
+                log.info("[중복 퀴즈 건너뜀] userNo={}, recordId={}, questionId={}",
+                        userNo, seed.getRecordId(), seed.getQuestionId());
+                continue;
+            }
+
+            // 3. GPT 기반 퀴즈 생성
             QuizResponse response = generateGptQuiz(seed);
 
+            // 4. 퀴즈 저장
             Quiz quiz = Quiz.builder()
                     .userNo(userNo)
+                    .record(record)
+                    .questionId(QuestionType.valueOf(seed.getQuestionId()))
                     .context("기록 기반 회상 퀴즈")
                     .question(response.getQuestion())
                     .answer(response.getAnswer())
@@ -53,17 +79,16 @@ public class QuizService {
                     .submittedAt(null)
                     .isCorrect(null)
                     .skipped(false)
-                    .record(Record.builder().recordId(seed.getRecordId()).build())
                     .build();
-
 
             quizRepository.save(quiz);
             quizResponses.add(response);
-
+            createdCount++;
         }
 
         return quizResponses;
     }
+
 
 
 

@@ -1,12 +1,15 @@
 package com.thinkeep.domain.quiz.repository;
 
+import com.thinkeep.domain.quiz.entity.QuestionType;
 import com.thinkeep.domain.quiz.entity.Quiz;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import com.thinkeep.domain.record.entity.Record;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface QuizRepository extends JpaRepository<Quiz, Long> {
@@ -34,6 +37,11 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
             "AND q.submittedAt BETWEEN :start AND :end " +
             "AND (q.isCorrect = false OR q.skipped = true)")
     List<Quiz> findTodayWrongOrSkippedQuizzes(Long userNo, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * 중복 퀴즈 체크
+     */
+    Optional<Quiz> findByUserNoAndRecordAndQuestionId(Long userNo, Record record, QuestionType questionId);
 
 
 }
