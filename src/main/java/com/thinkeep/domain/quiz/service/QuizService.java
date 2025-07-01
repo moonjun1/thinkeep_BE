@@ -1,5 +1,6 @@
 package com.thinkeep.domain.quiz.service;
 
+import com.thinkeep.domain.quiz.dto.QuestionSeed;
 import com.thinkeep.domain.quiz.dto.QuizResponse;
 import com.thinkeep.domain.quiz.dto.QuizResultSummary;
 import com.thinkeep.domain.quiz.dto.QuizSubmitRequest;
@@ -7,13 +8,12 @@ import com.thinkeep.domain.quiz.entity.Quiz;
 import com.thinkeep.domain.quiz.repository.QuizRepository;
 import com.thinkeep.domain.record.entity.Record;
 import com.thinkeep.domain.record.repository.RecordRepository;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -26,7 +26,7 @@ public class QuizService {
 
     private final QuizRepository quizRepository;
     private final RecordRepository recordRepository;
-
+    private final OpenAiQuizService openAiService;
 
     //오늘 퀴즈 생성
     @Transactional
@@ -34,19 +34,15 @@ public class QuizService {
         log.info("오늘 퀴즈 생성 요청: userNo={}", userNo);
 
         LocalDate today = LocalDate.now();
-
-        // 최근 3일 (오늘 제외) 기록 조회
         List<Record> recentRecords = recordRepository.findByUserNoAndDateBetween(
                 userNo, today.minusDays(3), today.minusDays(1)
         );
 
-        // Q2~Q4 응답 기반 퀴즈 시드 생성
         List<QuestionSeed> seeds = extractSeedsFromRecords(recentRecords);
-
-        // 퀴즈 2개 생성
         List<QuizResponse> quizResponses = new ArrayList<>();
+
         for (QuestionSeed seed : seeds.stream().limit(2).toList()) {
-            QuizResponse response = generateMockQuiz(seed);
+            QuizResponse response = generateGptQuiz(seed);
 
             Quiz quiz = Quiz.builder()
                     .userNo(userNo)
@@ -56,15 +52,19 @@ public class QuizService {
                     .choices(String.join("||", response.getChoices()))
                     .submittedAt(null)
                     .isCorrect(null)
+                    .skipped(false)
+                    .record(Record.builder().recordId(seed.getRecordId()).build())
                     .build();
+
 
             quizRepository.save(quiz);
             quizResponses.add(response);
-        }
 
+        }
 
         return quizResponses;
     }
+
 
 
     // 퀴즈 정답 제출
@@ -171,61 +171,27 @@ public class QuizService {
             Map<String, String> answers = record.getAnswersAsMap();
 
             if (answers.containsKey("Q2")) {
-                seeds.add(new QuestionSeed("Q2", "누구와 시간을 보냈나요?", answers.get("Q2"), record.getDate()));
+                seeds.add(new QuestionSeed("Q2", "누구와 시간을 보냈나요?", answers.get("Q2"), record.getDate(), record.getRecordId()));
             }
             if (answers.containsKey("Q3")) {
-                seeds.add(new QuestionSeed("Q3", "무엇을 먹었나요?", answers.get("Q3"), record.getDate()));
-
+                seeds.add(new QuestionSeed("Q3", "무엇을 먹었나요?", answers.get("Q3"), record.getDate(), record.getRecordId()));
             }
             if (answers.containsKey("Q4")) {
-                seeds.add(new QuestionSeed("Q4", "기억에 남는 일은 무엇인가요?", answers.get("Q4"), record.getDate()));
-
+                seeds.add(new QuestionSeed("Q4", "기억에 남는 일은 무엇인가요?", answers.get("Q4"), record.getDate(), record.getRecordId()));
             }
         }
         return seeds;
     }
 
     // 현재는 GPT 없이 임시 3지선다 생성 (정답 + 보기용 오답 2개)
-    // TODO GPT 적용 후 generateGPTQuiz()로 변경
-    private QuizResponse generateMockQuiz(QuestionSeed seed) {
-        List<String> choices = new ArrayList<>();
-        String questionText = null;
-
-        switch (seed.getQuestionId()) {
-            case "Q2" -> {
-                questionText = seed.getDate() + "에 누구와 있었는지 기억나시나요?";
-                choices = Arrays.asList(seed.getAnswer(), "선생님", "친구");
-            }
-            case "Q3" -> {
-                questionText = seed.getDate() + "에 먹었던 음식 중 하나는?";
-                choices = Arrays.asList(seed.getAnswer(), "김밥", "어묵");
-            }
-            case "Q4" -> {
-                questionText = seed.getDate() + "에 기억에 남는 일은 무엇인가요?";
-                choices = Arrays.asList(seed.getAnswer(), "독서", "산책");
-            }
+    private QuizResponse generateGptQuiz(QuestionSeed seed) {
+        try {
+            return openAiService.generateQuizFromSeed(seed);
+        } catch (IOException e) {
+            log.error("GPT 퀴즈 생성 중 오류 발생: {}", e.getMessage());
+            throw new RuntimeException("GPT 퀴즈 생성 실패", e);
         }
-
-        Collections.shuffle(choices);
-
-        return QuizResponse.builder()
-                .quizId(null)
-                .context("기록 기반 회상 퀴즈")
-                .question(questionText)
-                .choices(choices)
-                .answer(seed.getAnswer())  // 실제 정답
-                .build();
     }
 
 
-    // 정답 기반 퀴즈 시드 클래스
-    @Getter
-    @AllArgsConstructor
-    private static class QuestionSeed {
-        //extractSeedsFromRecords()에서 Q2~Q4 응답을 기반으로 만들어냄
-        private final String questionId; // Q2, Q3, Q4
-        private final String question;   // 예: "누구와 시간을 보냈나요?"
-        private final String answer;     // 사용자 입력값
-        private final LocalDate date;    // 회고 날짜
-    }
 }
