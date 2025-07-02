@@ -47,6 +47,26 @@ public class User {
     @Builder.Default
     private Integer streakCount = 0;
 
+    @Column(name = "last_record_date")
+    private LocalDate lastRecordDate;  // 마지막 출석 날짜
+
+    @Column(name = "badge_3_days_achieved")
+    @Builder.Default
+    private Boolean badge3DaysAchieved = false; // 시작의 뱃지 (3일)
+
+    @Column(name = "badge_7_days_achieved")
+    @Builder.Default
+    private Boolean badge7DaysAchieved = false; // 작은 습관의 뱃지 (7일)
+
+    @Column(name = "badge_14_days_achieved")
+    @Builder.Default
+    private Boolean badge14DaysAchieved = false;    //흔들림 없는 뱃지(14일)
+
+    @Column(name = "badge_30_days_achieved")
+    @Builder.Default
+    private Boolean badge30DaysAchieved = false;    //나를 위한 루틴 뱃지 (30일)
+
+
     // === 공통 필드 ===
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
