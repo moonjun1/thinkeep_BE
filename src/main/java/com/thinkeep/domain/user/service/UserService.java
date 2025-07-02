@@ -1,6 +1,8 @@
 package com.thinkeep.domain.user.service;
 
 
+import com.thinkeep.domain.badge.dto.UserBadgeRequest;
+import com.thinkeep.domain.badge.service.UserBadgeService;
 import com.thinkeep.domain.user.dto.CreateRequest;
 import com.thinkeep.domain.user.dto.Response;
 import com.thinkeep.domain.user.dto.UpdateRequest;
@@ -12,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,6 +26,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserBadgeService  userBadgeService;
 
     /**
      * 사용자 생성
@@ -160,6 +165,60 @@ public class UserService {
 
         return convertToResponse(updatedUser);
     }
+
+    /**
+     * 출석 체크 및 뱃지 부여
+     */
+    @Transactional
+    public void checkStreakAndAssignBadge(Long userNo, LocalDate today) {
+        User user = userRepository.findById(userNo)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userNo));
+
+        // 24시간 이상 공백이면 스트릭 초기화
+        if (user.getLastRecordDate() == null || ChronoUnit.DAYS.between(user.getLastRecordDate(), today) >= 2) {
+            user.setStreakCount(1);
+        } else if (!user.getLastRecordDate().isEqual(today)) {
+            user.setStreakCount(user.getStreakCount() + 1);
+        }
+
+        user.setLastRecordDate(today);
+
+        int streak = user.getStreakCount();
+
+        // === 조건에 따라 뱃지 지급 ===
+        if (streak == 3 && !Boolean.TRUE.equals(user.getBadge3DaysAchieved())) {
+            assignBadge(user, 1L); // 뱃지 ID 1
+            user.setBadge3DaysAchieved(true);
+        }
+
+        if (streak == 7 && !Boolean.TRUE.equals(user.getBadge7DaysAchieved())) {
+            assignBadge(user, 2L);
+            user.setBadge7DaysAchieved(true);
+        }
+
+        if (streak == 14 && !Boolean.TRUE.equals(user.getBadge14DaysAchieved())) {
+            assignBadge(user, 3L);
+            user.setBadge14DaysAchieved(true);
+        }
+
+        if (streak == 30 && !Boolean.TRUE.equals(user.getBadge30DaysAchieved())) {
+            assignBadge(user, 4L);
+            user.setBadge30DaysAchieved(true);
+        }
+
+        userRepository.save(user);
+    }
+    private void assignBadge(User user, Long badgeId) {
+        try {
+            userBadgeService.assignBadgeToUser(
+                    new UserBadgeRequest(user.getUserNo(), badgeId)
+            );
+            log.info("뱃지 지급 완료: userNo={}, badgeId={}", user.getUserNo(), badgeId);
+        } catch (IllegalStateException e) {
+            log.warn("이미 지급된 뱃지: {}", e.getMessage());
+        }
+    }
+
 
     // === 변환 메서드 ===
     private Response convertToResponse(User user) {
