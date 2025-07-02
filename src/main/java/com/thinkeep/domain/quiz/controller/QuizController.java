@@ -1,6 +1,9 @@
 package com.thinkeep.domain.quiz.controller;
 
-import com.thinkeep.domain.quiz.dto.*;
+import com.thinkeep.domain.quiz.dto.QuestionSeed;
+import com.thinkeep.domain.quiz.dto.QuizResponse;
+import com.thinkeep.domain.quiz.dto.QuizResultSummary;
+import com.thinkeep.domain.quiz.dto.QuizSubmitRequest;
 import com.thinkeep.domain.quiz.service.OpenAiQuizService;
 import com.thinkeep.domain.quiz.service.QuizService;
 import lombok.RequiredArgsConstructor;
@@ -60,20 +63,6 @@ public class QuizController {
     }
 
     /**
-     * 오늘 사용자가 건너뛴 횟수 및 남은 스킵 가능 횟수 조회
-     * GET /api/quizzes/today/skip-status
-     */
-    @GetMapping("/today/skip-status")
-    public ResponseEntity<SkipStatusResponse> getTodaySkipStatus(
-            Authentication authentication,
-            @RequestParam(required = false) Long userNo
-    ) {
-        Long resolvedUserNo = extractUserNo(authentication, userNo);
-        SkipStatusResponse response = quizService.getTodaySkipStatus(resolvedUserNo);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
      * 오늘 푼 퀴즈 중 오답 퀴즈만 반환
      * GET /api/quizzes/today/wrong
      */
@@ -127,37 +116,6 @@ public class QuizController {
         QuizResultSummary result = quizService.getTodayQuizResultSummary(resolvedUserNo);
         return ResponseEntity.ok(result);
     }
-
-    /**
-     * 단일 퀴즈 삭제
-     * DELETE /api/quizzes/{quizId}
-     */
-    @DeleteMapping("/{quizId}")
-    public ResponseEntity<Void> deleteQuiz(
-            @PathVariable Long quizId,
-            Authentication authentication,
-            @RequestParam(required = false) Long userNo
-    ) {
-        Long resolvedUserNo = extractUserNo(authentication, userNo);
-        quizService.deleteQuiz(resolvedUserNo, quizId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * 오늘 생성된 퀴즈 전체 삭제
-     * DELETE /api/quizzes/today
-     */
-    @DeleteMapping("/today")
-    public ResponseEntity<Void> deleteTodayQuizzes(
-            Authentication authentication,
-            @RequestParam(required = false) Long userNo
-    ) {
-        Long resolvedUserNo = extractUserNo(authentication, userNo);
-        quizService.deleteTodayQuizzes(resolvedUserNo);
-        return ResponseEntity.noContent().build();
-    }
-
-
 
     /**
      * JWT 인증 활성/비활성 모드에 따라 userNo 추출

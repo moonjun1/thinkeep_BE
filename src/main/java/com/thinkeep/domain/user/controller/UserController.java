@@ -1,6 +1,5 @@
 package com.thinkeep.domain.user.controller;
 
-import com.thinkeep.domain.badge.dto.UserBadgeResponse;
 import com.thinkeep.domain.user.dto.CreateRequest;
 import com.thinkeep.domain.user.dto.Response;
 import com.thinkeep.domain.user.dto.UpdateRequest;
@@ -143,16 +142,15 @@ public class UserController {
     @Operation(summary = "스트릭 카운트 증가", description = "사용자의 연속 일기 작성 카운트를 증가시킵니다.")
     @SecurityRequirement(name = "JWT")
     @PostMapping("/{userNo}/streak")
-    public ResponseEntity<UserBadgeResponse> increaseStreakCount(@PathVariable Long userNo) {
+    public ResponseEntity<Response> increaseStreakCount(@Parameter(description = "사용자 번호") @PathVariable Long userNo) {
         log.info("POST /api/users/{}/streak - 스트릭 카운트 증가", userNo);
 
         try {
-            UserBadgeResponse badgeResponse = userService.increaseStreakCount(userNo);
-            return ResponseEntity.ok(badgeResponse);
+            Response response = userService.increaseStreakCount(userNo);
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException e) {
             log.warn("스트릭 카운트 증가 실패: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
     }
-
 }
