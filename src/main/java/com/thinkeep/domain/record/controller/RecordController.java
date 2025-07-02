@@ -2,6 +2,12 @@ package com.thinkeep.domain.record.controller;
 
 import com.thinkeep.domain.record.dto.*;
 import com.thinkeep.domain.record.service.RecordService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -20,6 +26,8 @@ import java.util.Optional;
 @RequestMapping("/api/records")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "일기 기록", description = "일기 작성, 조회, 수정, 삭제 API")
+@SecurityRequirement(name = "JWT")
 public class RecordController {
 
     private final RecordService recordService;
@@ -35,10 +43,16 @@ public class RecordController {
      * JWT 비활성화: ?userNo=1 파라미터로 사용자 지정
      * JWT 활성화: Authorization 헤더에서 자동 추출
      */
+    @Operation(summary = "오늘 일기 작성", description = "오늘 날짜로 새 일기를 작성합니다. JWT 비활성화 시 userNo 파라미터 필요.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "일기 작성 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 이미 작성된 일기"),
+            @ApiResponse(responseCode = "401", description = "인증 실패")
+    })
     @PostMapping
     public ResponseEntity<?> createTodayRecord(
             Authentication authentication,
-            @RequestParam(required = false) Long userNo,
+            @Parameter(description = "사용자 번호 (JWT 비활성화 시 필수)") @RequestParam(required = false) Long userNo,
             @RequestBody RecordCreateRequest request) {
 
         log.info("POST /api/records - 일기 작성 요청");
@@ -78,10 +92,11 @@ public class RecordController {
      * 오늘 기록 상태 조회
      * GET /api/records/today
      */
+    @Operation(summary = "오늘 기록 상태 조회", description = "오늘 일기 작성 상태를 확인합니다.")
     @GetMapping("/today")
     public ResponseEntity<?> getTodayRecordStatus(
             Authentication authentication,
-            @RequestParam(required = false) Long userNo) {
+            @Parameter(description = "사용자 번호 (JWT 비활성화 시 필수)") @RequestParam(required = false) Long userNo) {
 
         log.info("GET /api/records/today - 오늘 기록 상태 조회");
 
@@ -105,11 +120,12 @@ public class RecordController {
      * 특정 날짜 기록 조회
      * GET /api/records/{date}
      */
+    @Operation(summary = "특정 날짜 일기 조회", description = "지정된 날짜의 일기를 조회합니다.")
     @GetMapping("/{date}")
     public ResponseEntity<?> getRecordByDate(
             Authentication authentication,
-            @RequestParam(required = false) Long userNo,
-            @PathVariable String date) {
+            @Parameter(description = "사용자 번호 (JWT 비활성화 시 필수)") @RequestParam(required = false) Long userNo,
+            @Parameter(description = "조회할 날짜 (YYYY-MM-DD)", example = "2025-01-15") @PathVariable String date) {
 
         log.info("GET /api/records/{} - 특정 날짜 기록 조회", date);
 
@@ -142,11 +158,12 @@ public class RecordController {
      * 기록 수정
      * PUT /api/records/{recordId}
      */
+    @Operation(summary = "일기 수정", description = "기존 일기를 수정합니다.")
     @PutMapping("/{recordId}")
     public ResponseEntity<?> updateRecord(
             Authentication authentication,
-            @RequestParam(required = false) Long userNo,
-            @PathVariable Long recordId,
+            @Parameter(description = "사용자 번호 (JWT 비활성화 시 필수)") @RequestParam(required = false) Long userNo,
+            @Parameter(description = "수정할 일기 ID") @PathVariable Long recordId,
             @RequestBody RecordCreateRequest request) {
 
         log.info("PUT /api/records/{} - 기록 수정", recordId);
@@ -174,11 +191,12 @@ public class RecordController {
      * 기록 삭제
      * DELETE /api/records/{recordId}
      */
+    @Operation(summary = "일기 삭제", description = "지정된 일기를 삭제합니다.")
     @DeleteMapping("/{recordId}")
     public ResponseEntity<?> deleteRecord(
             Authentication authentication,
-            @RequestParam(required = false) Long userNo,
-            @PathVariable Long recordId) {
+            @Parameter(description = "사용자 번호 (JWT 비활성화 시 필수)") @RequestParam(required = false) Long userNo,
+            @Parameter(description = "삭제할 일기 ID") @PathVariable Long recordId) {
 
         log.info("DELETE /api/records/{} - 기록 삭제", recordId);
 
@@ -231,6 +249,4 @@ public class RecordController {
                 .timestamp(java.time.LocalDateTime.now())
                 .build();
     }
-
-
 }
