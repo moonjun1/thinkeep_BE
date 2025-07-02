@@ -43,6 +43,14 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
      */
     Optional<Quiz> findByUserNoAndRecordAndQuestionId(Long userNo, Record record, QuestionType questionId);
 
+    /**
+     * 오늘 퀴즈 중 건너뛰기된 퀴즈 개수 세기
+     */
+    long countByUserNoAndSkippedIsTrueAndSubmittedAtBetween(
+            Long userNo, LocalDateTime start, LocalDateTime end
+    );
+
+
 
 }
 
