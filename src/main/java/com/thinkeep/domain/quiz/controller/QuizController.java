@@ -1,9 +1,6 @@
 package com.thinkeep.domain.quiz.controller;
 
-import com.thinkeep.domain.quiz.dto.QuestionSeed;
-import com.thinkeep.domain.quiz.dto.QuizResponse;
-import com.thinkeep.domain.quiz.dto.QuizResultSummary;
-import com.thinkeep.domain.quiz.dto.QuizSubmitRequest;
+import com.thinkeep.domain.quiz.dto.*;
 import com.thinkeep.domain.quiz.service.OpenAiQuizService;
 import com.thinkeep.domain.quiz.service.QuizService;
 import lombok.RequiredArgsConstructor;
@@ -60,6 +57,20 @@ public class QuizController {
 
         quizService.submitQuizAnswer(request);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * 오늘 사용자가 건너뛴 횟수 및 남은 스킵 가능 횟수 조회
+     * GET /api/quizzes/today/skip-status
+     */
+    @GetMapping("/today/skip-status")
+    public ResponseEntity<SkipStatusResponse> getTodaySkipStatus(
+            Authentication authentication,
+            @RequestParam(required = false) Long userNo
+    ) {
+        Long resolvedUserNo = extractUserNo(authentication, userNo);
+        SkipStatusResponse response = quizService.getTodaySkipStatus(resolvedUserNo);
+        return ResponseEntity.ok(response);
     }
 
     /**
