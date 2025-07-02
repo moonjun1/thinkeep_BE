@@ -2,6 +2,12 @@ package com.thinkeep.domain.user.service;
 
 
 import com.thinkeep.domain.badge.dto.UserBadgeRequest;
+import com.thinkeep.domain.badge.dto.UserBadgeResponse;
+import com.thinkeep.domain.badge.entity.Badge;
+import com.thinkeep.domain.badge.entity.UserBadge;
+import com.thinkeep.domain.badge.entity.UserBadgeId;
+import com.thinkeep.domain.badge.repository.BadgeRepository;
+import com.thinkeep.domain.badge.repository.UserBadgeRepository;
 import com.thinkeep.domain.badge.service.UserBadgeService;
 import com.thinkeep.domain.user.dto.CreateRequest;
 import com.thinkeep.domain.user.dto.Response;
@@ -15,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -28,6 +35,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserBadgeService  userBadgeService;
+    private final UserBadgeRepository userBadgeRepository;
     private static final Map<Integer, Long> STREAK_TO_BADGE_ID = Map.of(
             3, 1L,
             7, 2L,
@@ -157,9 +165,8 @@ public class UserService {
     /**
      * 스트릭 카운트 증가
      */
-
     @Transactional
-    public void increaseStreakCount(Long userNo) {
+    public UserBadgeResponse increaseStreakCount(Long userNo) {
         User user = userRepository.findById(userNo)
                 .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
@@ -174,44 +181,55 @@ public class UserService {
         }
         user.setLastRecordDate(today);
 
-        // 2. 뱃지 지급 조건 확인
-        Map<Integer, Runnable> badgeMap = Map.of(
-                3, () -> giveBadge(user, 1L, "badge3DaysAchieved"),
-                7, () -> giveBadge(user, 2L, "badge7DaysAchieved"),
-                14, () -> giveBadge(user, 3L, "badge14DaysAchieved"),
-                30, () -> giveBadge(user, 4L, "badge30DaysAchieved")
+        // 2. 뱃지 지급 조건 확인 및 반환
+        Map<Integer, Long> badgeMap = Map.of(
+                3, 1L,
+                7, 2L,
+                14, 3L,
+                30, 4L
         );
 
-        badgeMap.getOrDefault(user.getStreakCount(), () -> {}).run();
+        Long badgeId = badgeMap.get(user.getStreakCount());
+
         userRepository.save(user);
-    }
 
-    private void giveBadge(User user, Long badgeId, String badgeFieldName) {
-        try {
-            boolean alreadyGiven = switch (badgeFieldName) {
-                case "badge3DaysAchieved" -> user.getBadge3DaysAchieved();
-                case "badge7DaysAchieved" -> user.getBadge7DaysAchieved();
-                case "badge14DaysAchieved" -> user.getBadge14DaysAchieved();
-                case "badge30DaysAchieved" -> user.getBadge30DaysAchieved();
-                default -> true;
-            };
-
-            if (alreadyGiven) return;
-
-            userBadgeService.assignBadgeToUser(new UserBadgeRequest(user.getUserNo(), badgeId));
-            log.info("뱃지 지급 완료: userNo={}, badgeId={}", user.getUserNo(), badgeId);
-
-            switch (badgeFieldName) {
-                case "badge3DaysAchieved" -> user.setBadge3DaysAchieved(true);
-                case "badge7DaysAchieved" -> user.setBadge7DaysAchieved(true);
-                case "badge14DaysAchieved" -> user.setBadge14DaysAchieved(true);
-                case "badge30DaysAchieved" -> user.setBadge30DaysAchieved(true);
-            }
-
-        } catch (IllegalStateException e) {
-            log.warn("이미 지급된 뱃지: {}", e.getMessage());
+        if (badgeId != null) {
+            return giveBadge(user, badgeId);
         }
+
+        return null; // 뱃지 조건 미충족
     }
+    private final BadgeRepository badgeRepository;
+
+    private UserBadgeResponse giveBadge(User user, Long badgeId) {
+        UserBadgeId id = new UserBadgeId(user.getUserNo(), badgeId);
+
+        if (userBadgeRepository.existsById(id)) {
+            return null; // 이미 받은 뱃지
+        }
+
+        // badgeId로 Badge 객체 조회
+        Badge badge = badgeRepository.findById(badgeId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 뱃지입니다: " + badgeId));
+
+        // UserBadge 생성 및 저장
+        UserBadge userBadge = new UserBadge(
+                id,
+                user,
+                badge,
+                LocalDateTime.now()
+        );
+        userBadgeRepository.save(userBadge);
+
+        return UserBadgeResponse.builder()
+                .userNo(user.getUserNo())
+                .badgeId(badgeId)
+                .awardedAt(userBadge.getAwardedAt())
+                .build();
+    }
+
+
+
 
 
     // === 변환 메서드 ===
