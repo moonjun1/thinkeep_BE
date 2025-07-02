@@ -24,7 +24,7 @@ public class OpenAiQuizService {
     private String apiKey;
 
     private static final String API_URL = "https://api.openai.com/v1/chat/completions";
-    private static final String MODEL = "gpt-4o";
+    private static final String MODEL = "gpt-4o-mini";
     private final OkHttpClient client = new OkHttpClient();
     private final GptPromptFactory promptFactory;
     private final GptQuizParser quizParser;
@@ -38,6 +38,7 @@ public class OpenAiQuizService {
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode requestBody = mapper.createObjectNode();
         requestBody.put("model", MODEL);
+        requestBody.put("temperature", 0.3); //낮은 창의성 → 일관된 퀴즈 생성
 
         ArrayNode messages = mapper.createArrayNode();
         ObjectNode userMessage = mapper.createObjectNode();

@@ -81,7 +81,10 @@ public class QuizService {
                     .skipped(false)
                     .build();
 
-            quizRepository.save(quiz);
+            // 저장 후 실제 quizId 획득
+            Quiz savedQuiz = quizRepository.save(quiz);
+            response.setQuizId(savedQuiz.getQuizId());
+
             quizResponses.add(response);
             createdCount++;
         }
