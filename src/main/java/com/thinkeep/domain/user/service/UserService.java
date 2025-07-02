@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -27,6 +28,13 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserBadgeService  userBadgeService;
+    private static final Map<Integer, Long> STREAK_TO_BADGE_ID = Map.of(
+            3, 1L,
+            7, 2L,
+            14, 3L,
+            30, 4L
+    );
+
 
     /**
      * 사용자 생성
@@ -151,69 +159,55 @@ public class UserService {
      */
 
     @Transactional
-    public Response increaseStreakCount(Long userNo) {
-        log.info("스트릭 카운트 증가: userNo={}", userNo);
-
+    public void increaseStreakCount(Long userNo) {
         User user = userRepository.findById(userNo)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userNo));
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
 
-        user.setStreakCount(user.getStreakCount() + 1);
-        User updatedUser = userRepository.save(user);
+        LocalDate today = LocalDate.now();
 
-        log.info("스트릭 카운트 증가 완료: userNo={}, streakCount={}",
-                updatedUser.getUserNo(), updatedUser.getStreakCount());
-
-        return convertToResponse(updatedUser);
-    }
-
-    /**
-     * 출석 체크 및 뱃지 부여
-     */
-    @Transactional
-    public void checkStreakAndAssignBadge(Long userNo, LocalDate today) {
-        User user = userRepository.findById(userNo)
-                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다: " + userNo));
-
-        // 24시간 이상 공백이면 스트릭 초기화
-        if (user.getLastRecordDate() == null || ChronoUnit.DAYS.between(user.getLastRecordDate(), today) >= 2) {
-            user.setStreakCount(1);
-        } else if (!user.getLastRecordDate().isEqual(today)) {
+        // 1. 스트릭 카운트 갱신
+        LocalDate lastDate = user.getLastRecordDate();
+        if (lastDate != null && lastDate.isEqual(today.minusDays(1))) {
             user.setStreakCount(user.getStreakCount() + 1);
+        } else {
+            user.setStreakCount(1);
         }
-
         user.setLastRecordDate(today);
 
-        int streak = user.getStreakCount();
+        // 2. 뱃지 지급 조건 확인
+        Map<Integer, Runnable> badgeMap = Map.of(
+                3, () -> giveBadge(user, 1L, "badge3DaysAchieved"),
+                7, () -> giveBadge(user, 2L, "badge7DaysAchieved"),
+                14, () -> giveBadge(user, 3L, "badge14DaysAchieved"),
+                30, () -> giveBadge(user, 4L, "badge30DaysAchieved")
+        );
 
-        // === 조건에 따라 뱃지 지급 ===
-        if (streak == 3 && !Boolean.TRUE.equals(user.getBadge3DaysAchieved())) {
-            assignBadge(user, 1L); // 뱃지 ID 1
-            user.setBadge3DaysAchieved(true);
-        }
-
-        if (streak == 7 && !Boolean.TRUE.equals(user.getBadge7DaysAchieved())) {
-            assignBadge(user, 2L);
-            user.setBadge7DaysAchieved(true);
-        }
-
-        if (streak == 14 && !Boolean.TRUE.equals(user.getBadge14DaysAchieved())) {
-            assignBadge(user, 3L);
-            user.setBadge14DaysAchieved(true);
-        }
-
-        if (streak == 30 && !Boolean.TRUE.equals(user.getBadge30DaysAchieved())) {
-            assignBadge(user, 4L);
-            user.setBadge30DaysAchieved(true);
-        }
-
+        badgeMap.getOrDefault(user.getStreakCount(), () -> {}).run();
         userRepository.save(user);
     }
-    private void assignBadge(User user, Long badgeId) {
+
+    private void giveBadge(User user, Long badgeId, String badgeFieldName) {
         try {
-            userBadgeService.assignBadgeToUser(
-                    new UserBadgeRequest(user.getUserNo(), badgeId)
-            );
+            boolean alreadyGiven = switch (badgeFieldName) {
+                case "badge3DaysAchieved" -> user.getBadge3DaysAchieved();
+                case "badge7DaysAchieved" -> user.getBadge7DaysAchieved();
+                case "badge14DaysAchieved" -> user.getBadge14DaysAchieved();
+                case "badge30DaysAchieved" -> user.getBadge30DaysAchieved();
+                default -> true;
+            };
+
+            if (alreadyGiven) return;
+
+            userBadgeService.assignBadgeToUser(new UserBadgeRequest(user.getUserNo(), badgeId));
             log.info("뱃지 지급 완료: userNo={}, badgeId={}", user.getUserNo(), badgeId);
+
+            switch (badgeFieldName) {
+                case "badge3DaysAchieved" -> user.setBadge3DaysAchieved(true);
+                case "badge7DaysAchieved" -> user.setBadge7DaysAchieved(true);
+                case "badge14DaysAchieved" -> user.setBadge14DaysAchieved(true);
+                case "badge30DaysAchieved" -> user.setBadge30DaysAchieved(true);
+            }
+
         } catch (IllegalStateException e) {
             log.warn("이미 지급된 뱃지: {}", e.getMessage());
         }
