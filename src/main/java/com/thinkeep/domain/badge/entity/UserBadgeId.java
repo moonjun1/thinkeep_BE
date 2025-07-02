@@ -1,4 +1,4 @@
-package com.thinkeep.badge.domain;
+package com.thinkeep.domain.badge.entity;
 
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,4 +1,4 @@
-package com.thinkeep.badge.domain;
+package com.thinkeep.domain.badge.entity;
 
 
 import com.thinkeep.domain.user.entity.User;
@@ -13,6 +13,7 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class UserBadge {
 
     @EmbeddedId

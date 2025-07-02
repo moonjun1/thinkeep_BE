@@ -4,6 +4,11 @@ import com.thinkeep.domain.user.dto.CreateRequest;
 import com.thinkeep.domain.user.dto.Response;
 import com.thinkeep.domain.user.dto.UpdateRequest;
 import com.thinkeep.domain.user.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -16,6 +21,7 @@ import java.util.List;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "사용자", description = "사용자 관리 API")
 public class UserController {
 
     private final UserService userService;
@@ -24,6 +30,8 @@ public class UserController {
      * 사용자 생성 (회원가입)
      * POST /api/users
      */
+    @Operation(summary = "회원가입", description = "새로운 사용자를 생성합니다.")
+    @ApiResponse(responseCode = "201", description = "회원가입 성공")
     @PostMapping
     public ResponseEntity<Response> createUser(@RequestBody CreateRequest request) {
         log.info("POST /api/users - 사용자 생성 요청: nickname={}", request.getNickname());
@@ -41,8 +49,10 @@ public class UserController {
      * 사용자 조회 (ID)
      * GET /api/users/{userNo}
      */
+    @Operation(summary = "사용자 조회", description = "사용자 번호로 사용자 정보를 조회합니다.")
+    @SecurityRequirement(name = "JWT")
     @GetMapping("/{userNo}")
-    public ResponseEntity<Response> getUserById(@PathVariable Long userNo) {
+    public ResponseEntity<Response> getUserById(@Parameter(description = "사용자 번호") @PathVariable Long userNo) {
         log.info("GET /api/users/{} - 사용자 조회", userNo);
 
         try {
@@ -58,8 +68,10 @@ public class UserController {
      * 사용자 조회 (닉네임)
      * GET /api/users/nickname/{nickname}
      */
+    @Operation(summary = "닉네임으로 사용자 조회", description = "닉네임으로 사용자 정보를 조회합니다.")
+    @SecurityRequirement(name = "JWT")
     @GetMapping("/nickname/{nickname}")
-    public ResponseEntity<Response> getUserByNickname(@PathVariable String nickname) {
+    public ResponseEntity<Response> getUserByNickname(@Parameter(description = "사용자 닉네임") @PathVariable String nickname) {
         log.info("GET /api/users/nickname/{} - 닉네임으로 사용자 조회", nickname);
 
         try {
@@ -75,6 +87,8 @@ public class UserController {
      * 모든 사용자 조회
      * GET /api/users
      */
+    @Operation(summary = "모든 사용자 조회", description = "모든 사용자 목록을 조회합니다.")
+    @SecurityRequirement(name = "JWT")
     @GetMapping
     public ResponseEntity<List<Response>> getAllUsers() {
         log.info("GET /api/users - 사용자 목록 조회");
@@ -87,8 +101,10 @@ public class UserController {
      * 사용자 정보 수정
      * PUT /api/users/{userNo}
      */
+    @Operation(summary = "사용자 정보 수정", description = "사용자 정보를 수정합니다.")
+    @SecurityRequirement(name = "JWT")
     @PutMapping("/{userNo}")
-    public ResponseEntity<Response> updateUser(@PathVariable Long userNo, @RequestBody UpdateRequest request) {
+    public ResponseEntity<Response> updateUser(@Parameter(description = "사용자 번호") @PathVariable Long userNo, @RequestBody UpdateRequest request) {
         log.info("PUT /api/users/{} - 사용자 정보 수정", userNo);
 
         try {
@@ -104,8 +120,10 @@ public class UserController {
      * 사용자 삭제
      * DELETE /api/users/{userNo}
      */
+    @Operation(summary = "사용자 삭제", description = "사용자를 삭제합니다.")
+    @SecurityRequirement(name = "JWT")
     @DeleteMapping("/{userNo}")
-    public ResponseEntity<Void> deleteUser(@PathVariable Long userNo) {
+    public ResponseEntity<Void> deleteUser(@Parameter(description = "사용자 번호") @PathVariable Long userNo) {
         log.info("DELETE /api/users/{} - 사용자 삭제", userNo);
 
         try {
@@ -121,8 +139,10 @@ public class UserController {
      * 스트릭 카운트 증가
      * POST /api/users/{userNo}/streak
      */
+    @Operation(summary = "스트릭 카운트 증가", description = "사용자의 연속 일기 작성 카운트를 증가시킵니다.")
+    @SecurityRequirement(name = "JWT")
     @PostMapping("/{userNo}/streak")
-    public ResponseEntity<Response> increaseStreakCount(@PathVariable Long userNo) {
+    public ResponseEntity<Response> increaseStreakCount(@Parameter(description = "사용자 번호") @PathVariable Long userNo) {
         log.info("POST /api/users/{}/streak - 스트릭 카운트 증가", userNo);
 
         try {
