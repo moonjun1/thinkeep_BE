@@ -61,11 +61,10 @@ public class RecordController {
             // userNo 추출 (JWT 상태에 따라)
             Long targetUserNo = extractUserNo(authentication, userNo);
 
-            RecordCreateResponse response = recordService.createTodayRecord(targetUserNo, request);
+            RecordResponse response = recordService.createTodayRecord(targetUserNo, request);
 
-            log.info("일기 작성 성공: userNo={}, recordId={}", targetUserNo, response.getRecord().getRecordId());
+            log.info("일기 작성 성공: userNo={}, recordId={}", targetUserNo, response.getRecordId());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
 
         } catch (IllegalStateException e) {
             // 중복 작성 등 비즈니스 로직 에러

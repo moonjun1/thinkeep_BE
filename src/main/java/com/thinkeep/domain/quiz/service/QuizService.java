@@ -1,6 +1,9 @@
 package com.thinkeep.domain.quiz.service;
 
-import com.thinkeep.domain.quiz.dto.*;
+import com.thinkeep.domain.quiz.dto.QuestionSeed;
+import com.thinkeep.domain.quiz.dto.QuizResponse;
+import com.thinkeep.domain.quiz.dto.QuizResultSummary;
+import com.thinkeep.domain.quiz.dto.QuizSubmitRequest;
 import com.thinkeep.domain.quiz.entity.QuestionType;
 import com.thinkeep.domain.quiz.entity.Quiz;
 import com.thinkeep.domain.quiz.repository.QuizRepository;
@@ -89,33 +92,8 @@ public class QuizService {
         return quizResponses;
     }
 
-    // 건너뛰기 체크(하루 2번) -> 하루에 건너뛰기한 퀴즈가 2개 미만인 경우만 true 반환
-    public boolean isSkipAllowedToday(Long userNo) {
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime tomorrowStart = todayStart.plusDays(1);
 
-        long skippedCount = quizRepository.countByUserNoAndSkippedIsTrueAndSubmittedAtBetween(
-                userNo, todayStart, tomorrowStart
-        );
 
-        return skippedCount < 2;
-    }
-
-    //오늘 스킵 횟수 및 남은 가능 횟수 조회
-    public SkipStatusResponse getTodaySkipStatus(Long userNo) {
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime tomorrowStart = todayStart.plusDays(1);
-
-        long skipped = quizRepository.countByUserNoAndSkippedIsTrueAndSubmittedAtBetween(
-                userNo, todayStart, tomorrowStart
-        );
-
-        int skippedCount = (int) skipped;
-        int maxSkip = 2;
-        int remaining = Math.max(0, maxSkip - skippedCount);
-
-        return new SkipStatusResponse(skippedCount, remaining);
-    }
 
     // 퀴즈 정답 제출
     @Transactional
@@ -128,9 +106,6 @@ public class QuizService {
         Boolean skipped = Boolean.TRUE.equals(request.getSkipped());
 
         if (skipped) {
-            if (!isSkipAllowedToday(quiz.getUserNo())) {
-                throw new IllegalStateException("오늘은 더 이상 퀴즈를 건너뛸 수 없습니다 (하루 최대 2회)");
-            }
             // 건너뛰기 처리
             quiz.setUserAnswer(null);
             quiz.setIsCorrect(false);  // 건너뛴 경우 정답 처리 안됨
@@ -211,34 +186,6 @@ public class QuizService {
 
         return new QuizResultSummary((int) total, (int) correct);
     }
-
-    //단일 퀴즈 삭제 -> 사용자가 자신의 퀴즈 삭제
-    @Transactional
-    public void deleteQuiz(Long userNo, Long quizId) {
-        Quiz quiz = quizRepository.findById(quizId)
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 퀴즈입니다."));
-
-        // 본인 소유 퀴즈인지 확인
-        if (!quiz.getUserNo().equals(userNo)) {
-            throw new IllegalArgumentException("삭제 권한이 없습니다.");
-        }
-
-        quizRepository.delete(quiz);
-        log.info("퀴즈 삭제 완료: quizId={}, userNo={}", quizId, userNo);
-    }
-
-    //생성일 기준 해당 사용자의 퀴즈를 모두 삭제
-    @Transactional
-    public void deleteTodayQuizzes(Long userNo) {
-        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
-        LocalDateTime tomorrowStart = todayStart.plusDays(1);
-
-        List<Quiz> todayQuizzes = quizRepository.findByUserNoAndSubmittedAtBetween(userNo, todayStart, tomorrowStart);
-        quizRepository.deleteAll(todayQuizzes);
-
-        log.info("오늘 퀴즈 전체 삭제 완료: userNo={}, 삭제된 수={}", userNo, todayQuizzes.size());
-    }
-
 
 
 

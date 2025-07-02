@@ -1,6 +1,5 @@
 package com.thinkeep.domain.record.service;
 
-import com.thinkeep.domain.badge.dto.UserBadgeResponse;
 import com.thinkeep.domain.record.dto.*;
 import com.thinkeep.domain.record.entity.Record;
 import com.thinkeep.domain.record.repository.RecordRepository;
@@ -38,7 +37,7 @@ public class RecordService {
      * 5. 응답 DTO 변환
      */
     @Transactional
-    public RecordCreateResponse createTodayRecord(Long userNo, RecordCreateRequest request) {
+    public RecordResponse createTodayRecord(Long userNo, RecordCreateRequest request) {
         log.info("일기 작성 시작: userNo={}, date={}", userNo, LocalDate.now());
 
         // 1. 기본 검증
@@ -57,24 +56,18 @@ public class RecordService {
         Record savedRecord = recordRepository.save(record);
         log.info("일기 저장 완료: recordId={}", savedRecord.getRecordId());
 
-        // 5. 사용자 streak 카운트 증가 및 뱃지 지급 확인
-        UserBadgeResponse badgeResponse = null;
+        // 5. 사용자 streak 카운트 증가
         try {
-            badgeResponse = userService.increaseStreakCount(userNo);
-            log.info("Streak 카운트 증가 완료: userNo={}, badge={}",
-                    userNo, badgeResponse != null ? badgeResponse.getBadgeId() : "없음");
+            userService.increaseStreakCount(userNo);
+            log.info("Streak 카운트 증가 완료: userNo={}", userNo);
         } catch (Exception e) {
             log.warn("Streak 카운트 증가 실패: {}", e.getMessage());
-            // 일기 저장은 유지
+            // streak 실패해도 일기 저장은 유지 (비즈니스 연속성)
         }
 
         // 6. 응답 DTO 변환
-        return RecordCreateResponse.builder()
-                .record(convertToResponse(savedRecord))
-                .newBadge(badgeResponse) // null이면 뱃지 없음
-                .build();
+        return convertToResponse(savedRecord);
     }
-
 
     /**
      * 일기 작성 요청 검증
