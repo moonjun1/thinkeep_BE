@@ -11,5 +11,5 @@ public interface UserBadgeRepository extends JpaRepository<UserBadge, UserBadgeI
      * @param id UserBadgeId (userNo + badgeId)
      * @return 존재 여부
      */
-    boolean existsById(UserBadgeId id); // 중복 부여 방지 시 사용 가능
+    boolean existsById(UserBadgeId id);
 }
