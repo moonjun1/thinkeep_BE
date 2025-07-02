@@ -187,6 +187,34 @@ public class QuizService {
         return new QuizResultSummary((int) total, (int) correct);
     }
 
+    //단일 퀴즈 삭제 -> 사용자가 자신의 퀴즈 삭제
+    @Transactional
+    public void deleteQuiz(Long userNo, Long quizId) {
+        Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 퀴즈입니다."));
+
+        // 본인 소유 퀴즈인지 확인
+        if (!quiz.getUserNo().equals(userNo)) {
+            throw new IllegalArgumentException("삭제 권한이 없습니다.");
+        }
+
+        quizRepository.delete(quiz);
+        log.info("퀴즈 삭제 완료: quizId={}, userNo={}", quizId, userNo);
+    }
+
+    //생성일 기준 해당 사용자의 퀴즈를 모두 삭제
+    @Transactional
+    public void deleteTodayQuizzes(Long userNo) {
+        LocalDateTime todayStart = LocalDate.now().atStartOfDay();
+        LocalDateTime tomorrowStart = todayStart.plusDays(1);
+
+        List<Quiz> todayQuizzes = quizRepository.findByUserNoAndSubmittedAtBetween(userNo, todayStart, tomorrowStart);
+        quizRepository.deleteAll(todayQuizzes);
+
+        log.info("오늘 퀴즈 전체 삭제 완료: userNo={}, 삭제된 수={}", userNo, todayQuizzes.size());
+    }
+
+
 
 
     //보조 메서드
