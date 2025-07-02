@@ -3,14 +3,10 @@ name: Deploy to AWS EC2
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
-  # 테스트 단계 제거하고 바로 배포
   build-and-deploy:
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v3
@@ -21,21 +17,45 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Cache Gradle packages
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle (skip tests)
-        run: ./gradlew clean build -x test
+      - name: Build JAR
+        run: ./gradlew clean bootJar -x test
+
+      - name: List files (debug)
+        run: |
+          echo "Build directory:"
+          ls -la build/
+          echo "Libs directory:"
+          ls -la build/libs/
+          echo "All JAR files:"
+          find . -name "*.jar" -type f
+
+      - name: Create deployment package
+        run: |
+          mkdir deploy
+          
+          # JAR 파일 복사 (모든 가능한 패턴 시도)
+          JAR_FILE=""
+          if ls build/libs/*.jar 1> /dev/null 2>&1; then
+            JAR_FILE=$(ls build/libs/*.jar | head -1)
+          fi
+          
+          if [ -z "$JAR_FILE" ]; then
+            echo "❌ No JAR file found!"
+            exit 1
+          fi
+          
+          echo "✅ Using JAR file: $JAR_FILE"
+          cp "$JAR_FILE" deploy/app.jar
+          
+          # 다른 파일들 복사
+          cp docker-compose.yml deploy/
+          cp prometheus.yml deploy/
+          cp Dockerfile deploy/
+          
+          tar -czf deploy.tar.gz deploy/
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -44,42 +64,28 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Create deployment package
+      - name: Deploy to EC2
         run: |
-          mkdir deploy
-          cp build/libs/*.jar deploy/app.jar
-          cp docker-compose.yml deploy/
-          cp prometheus.yml deploy/
-          cp Dockerfile deploy/
-          tar -czf deploy.tar.gz deploy/
-
-      - name: Upload to S3 and Deploy
-        run: |
-          # S3 버킷 생성 (이미 있으면 무시)
-          aws s3 mb s3://thinkeep-deploy-$(date +%Y%m%d) 2>/dev/null || true
-          
-          # 배포 파일 업로드
-          BUCKET_NAME=thinkeep-deploy-$(date +%Y%m%d)
+          BUCKET_NAME=thinkeep-deploy-$(date +%Y%m%d%H%M)
+          aws s3 mb s3://$BUCKET_NAME
           aws s3 cp deploy.tar.gz s3://$BUCKET_NAME/deploy.tar.gz
           
-          # EC2에서 배포 실행
           aws ssm send-command \
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --parameters 'commands=[
-              "cd /home/ubuntu/thinkeep",
+              "cd /home/ubuntu/thinkeep || mkdir -p /home/ubuntu/thinkeep && cd /home/ubuntu/thinkeep",
               "sudo docker-compose down || true",
-              "BUCKET_NAME=thinkeep-deploy-$(date +%Y%m%d)",
-              "aws s3 cp s3://$BUCKET_NAME/deploy.tar.gz . || echo Download failed",
-              "tar -xzf deploy.tar.gz 2>/dev/null || echo Extract failed", 
-              "cp deploy/* . 2>/dev/null || echo Copy failed",
+              "BUCKET_NAME=thinkeep-deploy-$(date +%Y%m%d%H%M)",
+              "aws s3 cp s3://$BUCKET_NAME/deploy.tar.gz .",
+              "tar -xzf deploy.tar.gz",
+              "cp deploy/* .",
               "export DB_URL=\"${{ secrets.DB_URL }}\"",
               "export DB_USERNAME=\"${{ secrets.DB_USERNAME }}\"",
               "export DB_PASSWORD=\"${{ secrets.DB_PASSWORD }}\"",
               "export JWT_SECRET=\"${{ secrets.JWT_SECRET }}\"",
-              "export OPENAI_KEY=\"${{ secrets.OPENAI_API_KEY }}\"", 
+              "export OPENAI_KEY=\"${{ secrets.OPENAI_API_KEY }}\"",
               "export GRAFANA_PASSWORD=\"${{ secrets.GRAFANA_PASSWORD }}\"",
-              "sudo docker-compose up -d",
-              "sudo docker system prune -f"
+              "sudo docker-compose up -d"
             ]' \
             --region ${{ secrets.AWS_REGION }}
