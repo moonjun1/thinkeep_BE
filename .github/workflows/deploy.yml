@@ -80,12 +80,14 @@ jobs:
               "aws s3 cp s3://$BUCKET_NAME/deploy.tar.gz .",
               "tar -xzf deploy.tar.gz",
               "cp deploy/* .",
+              "sudo docker system prune -f",
+              "sudo docker rmi thinkeep-thinkeep-app:latest || true",
               "export DB_URL=\"${{ secrets.DB_URL }}\"",
               "export DB_USERNAME=\"${{ secrets.DB_USERNAME }}\"",
               "export DB_PASSWORD=\"${{ secrets.DB_PASSWORD }}\"",
               "export JWT_SECRET=\"${{ secrets.JWT_SECRET }}\"",
               "export OPENAI_KEY=\"${{ secrets.OPENAI_API_KEY }}\"",
               "export GRAFANA_PASSWORD=\"${{ secrets.GRAFANA_PASSWORD }}\"",
-              "sudo docker-compose up -d"
+              "sudo docker-compose up -d --build"
             ]' \
             --region ${{ secrets.AWS_REGION }}
