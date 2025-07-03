@@ -39,6 +39,11 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
+    # DNS 설정 추가
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 169.254.169.253  # AWS DNS
     networks:
       - thinkeep-network
 
