@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -36,58 +37,76 @@ public class QuizService {
                 userNo, today.minusDays(3), today.minusDays(1)
         );
 
-        List<QuestionSeed> seeds = extractSeedsFromRecords(recentRecords);
-        List<QuizResponse> quizResponses = new ArrayList<>();
+        // 날짜 구분
+        Map<LocalDate, List<Record>> recordsByDate = recentRecords.stream()
+                .collect(Collectors.groupingBy(Record::getDate));
 
+        // 날짜 리스트 전체 랜덤 순회
+        List<LocalDate> dateList = new ArrayList<>(recordsByDate.keySet());
+        if (dateList.isEmpty())
+            return List.of();
+
+        Collections.shuffle(dateList); // 날짜 순서를 무작위로 섞음
+
+        List<QuizResponse> quizResponses = new ArrayList<>();
         int createdCount = 0;
 
-        for (QuestionSeed seed : seeds) {
-            if (createdCount >= 2) break;
+        // 날짜 하나씩 순회 -> 퀴즈 2개 생성 시도
+        for (LocalDate selectedDate : dateList) {
+            List<Record> selectedRecords = recordsByDate.get(selectedDate);
+            List<QuestionSeed> seeds = extractSeedsFromRecords(selectedRecords);
 
-            // 1. Record 객체 생성
-            Record record = Record.builder().recordId(seed.getRecordId()).build();
+            for (QuestionSeed seed : seeds) {
+                if (createdCount >= 2) break;
 
-            // 2. 중복 퀴즈 존재 여부 확인
-            boolean alreadyExists = quizRepository
-                    .findByUserNoAndRecordAndQuestionId(
-                            userNo,
-                            record,
-                            QuestionType.valueOf(seed.getQuestionId())
-                    ).isPresent();
+                // 1. Record 객체 생성
+                Record record = Record.builder().recordId(seed.getRecordId()).build();
 
-            if (alreadyExists) {
-                log.info("[중복 퀴즈 건너뜀] userNo={}, recordId={}, questionId={}",
-                        userNo, seed.getRecordId(), seed.getQuestionId());
-                continue;
+                // 2. 중복 퀴즈 존재 여부 확인
+                boolean alreadyExists = quizRepository
+                        .findByUserNoAndRecordAndQuestionId(
+                                userNo,
+                                record,
+                                QuestionType.valueOf(seed.getQuestionId())
+                        ).isPresent();
+
+                if (alreadyExists) {
+                    log.info("[중복 퀴즈 건너뜀] userNo={}, recordId={}, questionId={}",
+                            userNo, seed.getRecordId(), seed.getQuestionId());
+                    continue;
+                }
+
+                // 3. GPT 기반 퀴즈 생성
+                QuizResponse response = generateGptQuiz(seed);
+
+                // 4. 퀴즈 저장
+                Quiz quiz = Quiz.builder()
+                        .userNo(userNo)
+                        .record(record)
+                        .questionId(QuestionType.valueOf(seed.getQuestionId()))
+                        .context("기록 기반 회상 퀴즈")
+                        .question(response.getQuestion())
+                        .answer(response.getAnswer())
+                        .choices(String.join("||", response.getChoices()))
+                        .submittedAt(null)
+                        .isCorrect(null)
+                        .skipped(false)
+                        .build();
+
+                // 저장 후 실제 quizId 획득
+                Quiz savedQuiz = quizRepository.save(quiz);
+                response.setQuizId(savedQuiz.getQuizId());
+
+                quizResponses.add(response);
+                createdCount++;
             }
-
-            // 3. GPT 기반 퀴즈 생성
-            QuizResponse response = generateGptQuiz(seed);
-
-            // 4. 퀴즈 저장
-            Quiz quiz = Quiz.builder()
-                    .userNo(userNo)
-                    .record(record)
-                    .questionId(QuestionType.valueOf(seed.getQuestionId()))
-                    .context("기록 기반 회상 퀴즈")
-                    .question(response.getQuestion())
-                    .answer(response.getAnswer())
-                    .choices(String.join("||", response.getChoices()))
-                    .submittedAt(null)
-                    .isCorrect(null)
-                    .skipped(false)
-                    .build();
-
-            // 저장 후 실제 quizId 획득
-            Quiz savedQuiz = quizRepository.save(quiz);
-            response.setQuizId(savedQuiz.getQuizId());
-
-            quizResponses.add(response);
-            createdCount++;
+            // 퀴즈 2개 생성되면 종료
+            if (createdCount >= 2) break;
         }
 
         return quizResponses;
     }
+
 
     // 건너뛰기 체크(하루 2번) -> 하루에 건너뛰기한 퀴즈가 2개 미만인 경우만 true 반환
     public boolean isSkipAllowedToday(Long userNo) {
