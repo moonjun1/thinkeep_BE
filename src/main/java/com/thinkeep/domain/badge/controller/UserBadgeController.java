@@ -29,8 +29,15 @@ public class UserBadgeController {
     @Operation(summary = "사용자에게 뱃지 부여", description = "특정 사용자에게 뱃지를 부여합니다.")
     @ApiResponse(responseCode = "200", description = "뱃지 부여 성공")
     @PostMapping
-    public ResponseEntity<UserBadgeResponse> assignBadgeToUser(@RequestBody UserBadgeRequest request) {
-        UserBadgeResponse response = userBadgeService.assignBadgeToUser(request);
-        return ResponseEntity.ok(response);
+    //성공 -> UserBadgeResponse 반환
+    //실패 -> string 반환
+    public ResponseEntity<?> assignBadgeToUser(@RequestBody UserBadgeRequest request) {
+        try {
+            UserBadgeResponse response = userBadgeService.assignBadgeToUser(request);
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
+
 }
