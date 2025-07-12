@@ -3,7 +3,10 @@ package com.thinkeep.domain.user.controller;
 import com.thinkeep.domain.badge.dto.UserBadgeResponse;
 import com.thinkeep.domain.user.dto.CreateRequest;
 import com.thinkeep.domain.user.dto.Response;
+import com.thinkeep.domain.user.dto.StreakCountResponse;
 import com.thinkeep.domain.user.dto.UpdateRequest;
+import com.thinkeep.domain.user.entity.User;
+import com.thinkeep.domain.user.repository.UserRepository;
 import com.thinkeep.domain.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +29,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
     /**
      * 사용자 생성 (회원가입)
@@ -153,6 +157,14 @@ public class UserController {
             log.warn("스트릭 카운트 증가 실패: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @Operation(summary = "사용자 스트릭 수 조회", description = "사용자의 현재 streakCount를 반환합니다.")
+    @GetMapping("/{userNo}/streak")
+    public ResponseEntity<StreakCountResponse> getStreakCount(@PathVariable Long userNo) {
+        User user = userRepository.findById(userNo)
+                .orElseThrow(() -> new IllegalArgumentException("해당 사용자가 존재하지 않습니다."));
+        return ResponseEntity.ok(new StreakCountResponse(user.getUserNo(), user.getStreakCount()));
     }
 
 }
