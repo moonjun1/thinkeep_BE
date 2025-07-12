@@ -70,6 +70,7 @@ public class UserBadgeService {
                 .userNo(user.getUserNo())
                 .badgeId(badge.getBadgeId())
                 .awardedAt(userBadge.getAwardedAt())
+                .streakCount(user.getStreakCount())
                 .build();
     }
 
