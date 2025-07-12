@@ -14,5 +14,6 @@ public class QuizResponse { //퀴즈 문제를 제공하기 위한 DTO
     private String question;
     private List<String> choices;
     private String answer;
+    private java.time.LocalDate recordDate; //문제 출처가 된 기록의 날짜
 }
 

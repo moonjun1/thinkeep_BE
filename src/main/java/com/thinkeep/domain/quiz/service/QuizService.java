@@ -78,6 +78,7 @@ public class QuizService {
 
                 // 3. GPT 기반 퀴즈 생성
                 QuizResponse response = generateGptQuiz(seed);
+                response.setRecordDate(seed.getDate());
 
                 // 4. 퀴즈 저장
                 Quiz quiz = Quiz.builder()
