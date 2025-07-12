@@ -206,6 +206,46 @@ public class RecordController {
         }
     }
 
+    /**
+     * 🆕 월별 감정 데이터 조회 (기존 API 활용)
+     * GET /api/records/emotions/{userNo}?year={year}&month={month}
+     */
+    @Operation(summary = "월별 감정 데이터 조회", description = "특정 월의 감정 데이터를 조회합니다. 기존 API를 활용하여 월별 필터링을 수행합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "월별 감정 데이터 조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
+    })
+    @GetMapping("/emotions/{userNo}")
+    public ResponseEntity<?> getMonthlyEmotions(
+            @Parameter(description = "조회할 사용자 번호") @PathVariable Long userNo,
+            @Parameter(description = "조회할 연도", example = "2025") @RequestParam int year,
+            @Parameter(description = "조회할 월", example = "7") @RequestParam int month) {
+
+        log.info("GET /api/records/emotions/{} - 월별 감정 데이터 조회: year={}, month={}", userNo, year, month);
+
+        try {
+            // 입력 검증
+            if (year < 2020 || year > 2030) {
+                return ResponseEntity.badRequest().body(createErrorResponse("유효하지 않은 연도입니다 (2020-2030)"));
+            }
+            if (month < 1 || month > 12) {
+                return ResponseEntity.badRequest().body(createErrorResponse("유효하지 않은 월입니다 (1-12)"));
+            }
+
+            MonthlyEmotionResponse response = recordService.getMonthlyEmotions(userNo, year, month);
+
+            log.info("월별 감정 데이터 조회 성공: userNo={}, year={}, month={}, records={}, emotions={}",
+                    userNo, year, month, response.getTotalRecords(), response.getEmotions().size());
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("월별 감정 데이터 조회 실패: userNo={}, year={}, month={}", userNo, year, month, e);
+            return ResponseEntity.internalServerError()
+                    .body(createErrorResponse("월별 감정 데이터 조회 중 오류가 발생했습니다"));
+        }
+    }
+
     // ========================================
     // 3. 수정/삭제 API
     // ========================================

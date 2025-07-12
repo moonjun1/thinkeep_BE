@@ -231,6 +231,78 @@ public class RecordService {
     }
 
     /**
+     * 🆕 월별 감정 데이터 조회
+     * 기존 getAllRecordsByUser를 활용하여 월별 필터링 및 감정 변환
+     */
+    public MonthlyEmotionResponse getMonthlyEmotions(Long userNo, int year, int month) {
+        log.info("월별 감정 데이터 조회: userNo={}, year={}, month={}", userNo, year, month);
+
+        // 1. 사용자의 모든 일기 조회
+        List<Record> allRecords = recordRepository.findByUserNoOrderByDateDesc(userNo);
+
+        // 2. 해당 월의 일기만 필터링
+        List<Record> monthlyRecords = allRecords.stream()
+                .filter(record -> {
+                    LocalDate recordDate = record.getDate();
+                    return recordDate.getYear() == year && recordDate.getMonthValue() == month;
+                })
+                .collect(Collectors.toList());
+
+        log.info("해당 월 기록 수: {}", monthlyRecords.size());
+
+        // 3. 날짜별 감정 맵 생성
+        Map<String, String> emotions = monthlyRecords.stream()
+                .collect(Collectors.toMap(
+                        record -> record.getDate().toString(), // "2025-07-01"
+                        record -> convertKoreanToEnglish(record.getEmotion()), // "행복" -> "happy"
+                        (existing, replacement) -> existing // 중복 키 처리
+                ));
+
+        // 4. 감정별 통계 생성
+        Map<String, Integer> emotionStats = monthlyRecords.stream()
+                .map(record -> convertKoreanToEnglish(record.getEmotion()))
+                .collect(Collectors.groupingBy(
+                        emotion -> emotion,
+                        Collectors.collectingAndThen(Collectors.counting(), Long::intValue)
+                ));
+
+        // 5. 가장 많이 나타난 감정 찾기
+        String dominantEmotion = emotionStats.entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(Map.Entry::getKey)
+                .orElse("none");
+
+        // 6. 응답 생성
+        return MonthlyEmotionResponse.builder()
+                .userNo(userNo)
+                .year(year)
+                .month(month)
+                .emotions(emotions)
+                .totalRecords(monthlyRecords.size())
+                .emotionStats(emotionStats)
+                .dominantEmotion(dominantEmotion)
+                .timestamp(java.time.LocalDateTime.now().toString())
+                .build();
+    }
+
+    /**
+     * 한글 감정을 영어로 변환
+     */
+    private String convertKoreanToEnglish(String koreanEmotion) {
+        if (koreanEmotion == null) return "none";
+
+        return switch (koreanEmotion.trim()) {
+            case "행복" -> "happy";
+            case "기쁨" -> "good";
+            case "보통" -> "soso";
+            case "우울" -> "gloomy";
+            case "슬픔" -> "sad";
+            case "화남" -> "angry";
+            default -> "none";
+        };
+    }
+
+    /**
      * 기록 수정
      */
     @Transactional
