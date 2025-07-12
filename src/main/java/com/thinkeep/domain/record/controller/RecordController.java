@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -66,7 +67,6 @@ public class RecordController {
             log.info("일기 작성 성공: userNo={}, recordId={}", targetUserNo, response.getRecord().getRecordId());
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
 
-
         } catch (IllegalStateException e) {
             // 중복 작성 등 비즈니스 로직 에러
             log.warn("일기 작성 실패 (비즈니스 에러): {}", e.getMessage());
@@ -114,6 +114,61 @@ public class RecordController {
             log.error("오늘 기록 상태 조회 실패", e);
             return ResponseEntity.internalServerError()
                     .body(createErrorResponse("상태 조회 중 오류가 발생했습니다"));
+        }
+    }
+
+    /**
+     * 🆕 사용자의 모든 일기 목록 조회
+     * GET /api/records/user/{userNo}/all
+     */
+    @Operation(summary = "사용자 전체 일기 목록 조회", description = "특정 사용자의 모든 일기를 최신순으로 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "일기 목록 조회 성공"),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음")
+    })
+    @GetMapping("/user/{userNo}/all")
+    public ResponseEntity<?> getAllRecordsByUser(
+            @Parameter(description = "조회할 사용자 번호") @PathVariable Long userNo) {
+
+        log.info("GET /api/records/user/{}/all - 사용자 전체 일기 조회", userNo);
+
+        try {
+            List<RecordResponse> records = recordService.getAllRecordsByUser(userNo);
+
+            log.info("사용자 전체 일기 조회 성공: userNo={}, 기록 수={}", userNo, records.size());
+            return ResponseEntity.ok(records);
+
+        } catch (Exception e) {
+            log.error("사용자 전체 일기 조회 실패: userNo={}", userNo, e);
+            return ResponseEntity.internalServerError()
+                    .body(createErrorResponse("일기 목록 조회 중 오류가 발생했습니다"));
+        }
+    }
+
+    /**
+     * 🆕 간단한 사용자 일기 조회 (JWT 토글 지원)
+     * GET /api/records/all
+     */
+    @Operation(summary = "내 모든 일기 조회", description = "현재 로그인된 사용자의 모든 일기를 조회합니다.")
+    @GetMapping("/all")
+    public ResponseEntity<?> getMyAllRecords(
+            Authentication authentication,
+            @Parameter(description = "사용자 번호 (JWT 비활성화 시 필수)") @RequestParam(required = false) Long userNo) {
+
+        log.info("GET /api/records/all - 내 전체 일기 조회");
+
+        try {
+            Long targetUserNo = extractUserNo(authentication, userNo);
+
+            List<RecordResponse> records = recordService.getAllRecordsByUser(targetUserNo);
+
+            log.info("내 전체 일기 조회 성공: userNo={}, 기록 수={}", targetUserNo, records.size());
+            return ResponseEntity.ok(records);
+
+        } catch (Exception e) {
+            log.error("내 전체 일기 조회 실패", e);
+            return ResponseEntity.internalServerError()
+                    .body(createErrorResponse("일기 목록 조회 중 오류가 발생했습니다"));
         }
     }
 

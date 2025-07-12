@@ -35,6 +35,10 @@ public class Record {
     @Column(name = "answers", columnDefinition = "TEXT")
     private String answers;
 
+    // 🆕 감정 필드 추가
+    @Column(name = "emotion", length = 50)
+    private String emotion;
+
     // Q2 관련 구조화된 데이터
     @Column(name = "person_category", length = 100)
     private String personCategory;
@@ -69,8 +73,6 @@ public class Record {
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
-
-
 
     /**
      * Map 형태의 답변을 JSON 문자열로 변환하여 저장
@@ -147,8 +149,6 @@ public class Record {
         return value.replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r");
     }
 
-
-
     /**
      * 오늘 기록인지 확인
      */
@@ -157,7 +157,7 @@ public class Record {
     }
 
     /**
-     * 모든 필수 답변이 완료되었는지 확인
+     * 모든 필수 답변이 완료되었는지 확인 (감정 포함)
      */
     public boolean isComplete() {
         Map<String, String> answersMap = getAnswersAsMap();
@@ -165,11 +165,12 @@ public class Record {
         return isNotEmpty(answersMap.get("Q1")) &&
                 isNotEmpty(answersMap.get("Q2")) &&
                 isNotEmpty(answersMap.get("Q3")) &&
-                isNotEmpty(answersMap.get("Q4"));
+                isNotEmpty(answersMap.get("Q4")) &&
+                isNotEmpty(this.emotion); // 🆕 감정도 완료 조건에 추가
     }
 
     /**
-     * 답변한 질문 수 계산
+     * 답변한 질문 수 계산 (감정 포함)
      */
     public int getAnswerCount() {
         Map<String, String> answersMap = getAnswersAsMap();
@@ -179,6 +180,7 @@ public class Record {
         if (isNotEmpty(answersMap.get("Q2"))) count++;
         if (isNotEmpty(answersMap.get("Q3"))) count++;
         if (isNotEmpty(answersMap.get("Q4"))) count++;
+        if (isNotEmpty(this.emotion)) count++; // 🆕 감정 카운트 추가
 
         return count;
     }
@@ -192,7 +194,7 @@ public class Record {
      */
     @Override
     public String toString() {
-        return String.format("Record{id=%d, userNo=%d, date=%s, answerCount=%d}",
-                recordId, userNo, date, getAnswerCount());
+        return String.format("Record{id=%d, userNo=%d, date=%s, emotion=%s, answerCount=%d}",
+                recordId, userNo, date, emotion, getAnswerCount());
     }
 }

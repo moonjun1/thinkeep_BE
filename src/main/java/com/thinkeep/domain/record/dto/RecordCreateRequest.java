@@ -2,8 +2,6 @@ package com.thinkeep.domain.record.dto;
 
 import lombok.*;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 // === 1. 일기 작성 요청 DTO ===
@@ -21,6 +19,12 @@ public class RecordCreateRequest {
     private Map<String, String> answers;
 
     /**
+     * 🆕 감정 필드
+     * 예시: "기쁨", "행복", "우울", "불안", "평온" 등
+     */
+    private String emotion;
+
+    /**
      * 검증 메서드
      */
     public boolean isValid() {
@@ -29,7 +33,8 @@ public class RecordCreateRequest {
                 answers.containsKey("Q1") &&
                 answers.containsKey("Q2") &&
                 answers.containsKey("Q3") &&
-                answers.containsKey("Q4");
+                answers.containsKey("Q4") &&
+                emotion != null && !emotion.trim().isEmpty(); // 🆕 감정 검증 추가
     }
 
     /**
@@ -41,7 +46,8 @@ public class RecordCreateRequest {
         return isNotEmpty(answers.get("Q1")) &&
                 isNotEmpty(answers.get("Q2")) &&
                 isNotEmpty(answers.get("Q3")) &&
-                isNotEmpty(answers.get("Q4"));
+                isNotEmpty(answers.get("Q4")) &&
+                isNotEmpty(emotion); // 🆕 감정 필수 체크 추가
     }
 
     private boolean isNotEmpty(String value) {

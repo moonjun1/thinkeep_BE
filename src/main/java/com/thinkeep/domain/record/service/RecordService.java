@@ -11,8 +11,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,7 +41,7 @@ public class RecordService {
      */
     @Transactional
     public RecordCreateResponse createTodayRecord(Long userNo, RecordCreateRequest request) {
-        log.info("일기 작성 시작: userNo={}, date={}", userNo, LocalDate.now());
+        log.info("일기 작성 시작: userNo={}, date={}, emotion={}", userNo, LocalDate.now(), request.getEmotion());
 
         // 1. 기본 검증
         validateCreateRequest(userNo, request);
@@ -55,7 +57,7 @@ public class RecordService {
 
         // 4. 데이터베이스 저장
         Record savedRecord = recordRepository.save(record);
-        log.info("일기 저장 완료: recordId={}", savedRecord.getRecordId());
+        log.info("일기 저장 완료: recordId={}, emotion={}", savedRecord.getRecordId(), savedRecord.getEmotion());
 
         // 5. 사용자 streak 카운트 증가 및 뱃지 지급 확인
         UserBadgeResponse badgeResponse = null;
@@ -75,9 +77,8 @@ public class RecordService {
                 .build();
     }
 
-
     /**
-     * 일기 작성 요청 검증
+     * 일기 작성 요청 검증 (감정 포함)
      */
     private void validateCreateRequest(Long userNo, RecordCreateRequest request) {
         log.debug("검증 시작: userNo={}", userNo);
@@ -95,10 +96,17 @@ public class RecordService {
         if (!request.hasAllRequiredAnswers()) {
             log.error("검증 실패: 답변 불완전 - userNo={}, answers={}",
                     userNo, request.getAnswers() != null ? request.getAnswers().keySet() : "null");
-            throw new IllegalArgumentException("모든 질문(Q1~Q4)에 답변을 작성해주세요");
+            throw new IllegalArgumentException("모든 질문(Q1~Q4)과 감정을 입력해주세요");
         }
 
-        log.debug("검증 완료: userNo={}, 답변 개수={}", userNo, request.getAnswers().size());
+        // 🆕 감정 검증 추가
+        if (request.getEmotion() == null || request.getEmotion().trim().isEmpty()) {
+            log.error("검증 실패: 감정 누락 - userNo={}", userNo);
+            throw new IllegalArgumentException("감정을 선택해주세요");
+        }
+
+        log.debug("검증 완료: userNo={}, 답변 개수={}, emotion={}",
+                userNo, request.getAnswers().size(), request.getEmotion());
     }
 
     /**
@@ -108,6 +116,7 @@ public class RecordService {
         Record record = Record.builder()
                 .userNo(userNo)
                 .date(date)
+                .emotion(request.getEmotion()) // 감정 설정
                 .build();
 
         // JSON 답변 설정
@@ -207,11 +216,26 @@ public class RecordService {
     }
 
     /**
+     * 🆕 사용자의 모든 일기 목록 조회 (최신순)
+     */
+    public List<RecordResponse> getAllRecordsByUser(Long userNo) {
+        log.info("사용자 전체 기록 조회: userNo={}", userNo);
+
+        List<Record> records = recordRepository.findByUserNoOrderByDateDesc(userNo);
+
+        log.info("조회된 기록 수: {}", records.size());
+
+        return records.stream()
+                .map(this::convertToResponse)
+                .collect(Collectors.toList());
+    }
+
+    /**
      * 기록 수정
      */
     @Transactional
     public RecordResponse updateRecord(Long userNo, Long recordId, RecordCreateRequest request) {
-        log.info("기록 수정: userNo={}, recordId={}", userNo, recordId);
+        log.info("기록 수정: userNo={}, recordId={}, emotion={}", userNo, recordId, request.getEmotion());
 
         // 기록 조회 및 권한 확인
         Record record = recordRepository.findByRecordIdAndUserNo(recordId, userNo)
@@ -220,8 +244,9 @@ public class RecordService {
         // 요청 검증
         validateCreateRequest(userNo, request);
 
-        // 데이터 업데이트
+        // 데이터 업데이트 (감정 포함)
         record.setAnswersFromMap(request.getAnswers());
+        record.setEmotion(request.getEmotion()); // 🆕 감정 업데이트
 
         // Q2 정보 업데이트
         String q2Answer = request.getAnswers().get("Q2");
@@ -231,7 +256,7 @@ public class RecordService {
         }
 
         Record updatedRecord = recordRepository.save(record);
-        log.info("기록 수정 완료: recordId={}", updatedRecord.getRecordId());
+        log.info("기록 수정 완료: recordId={}, emotion={}", updatedRecord.getRecordId(), updatedRecord.getEmotion());
 
         return convertToResponse(updatedRecord);
     }
@@ -257,7 +282,7 @@ public class RecordService {
     // ========================================
 
     /**
-     * Record Entity를 RecordResponse DTO로 변환
+     * Record Entity를 RecordResponse DTO로 변환 (감정 포함)
      */
     private RecordResponse convertToResponse(Record record) {
         Map<String, String> answers = record.getAnswersAsMap();
@@ -267,6 +292,7 @@ public class RecordService {
                 .userNo(record.getUserNo())
                 .date(record.getDate())
                 .answers(answers)
+                .emotion(record.getEmotion()) // 🆕 감정 추가
                 .isComplete(record.isComplete())
                 .isToday(record.isToday())
                 .createdAt(record.getCreatedAt())
