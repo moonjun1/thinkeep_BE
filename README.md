@@ -12,6 +12,9 @@
 - [환경 설정](#-환경-설정)
 - [배포](#-배포)
 - [모니터링](#-모니터링)
+## 이미지
+<img width="1278" height="713" alt="스크린샷 2025-07-16 121144" src="https://github.com/user-attachments/assets/ecd1a122-48d6-43e1-aa05-51a504ebea08" />
+<img width="1279" height="706" alt="스크린샷 2025-07-16 121114" src="https://github.com/user-attachments/assets/df4bc1eb-a55e-4612-8822-cfb78dd09359" />
 
 ## 🎯 프로젝트 개요
 
